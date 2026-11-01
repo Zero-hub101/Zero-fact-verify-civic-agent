@@ -39,3 +39,6 @@ services:
         value: groq
       - key: AI_VOICE
         value: sarvam,elevenlabs
+      # Speed: Gemini translates in ~2 s (and in the same call as research); Sarvam stays as backup and does the voice.
+      - key: AI_TRANSLATION
+        value: gemini,sarvam,groq
