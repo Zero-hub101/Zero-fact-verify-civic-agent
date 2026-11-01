@@ -77,14 +77,19 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
 
   return (
     <form className="card intake" onSubmit={submit}>
+      <div className="intro">
+        <p><b>Got a message about a government scheme, scholarship or benefit?</b> Paste it here (any Indian language,
+          or a photo or video of it). In a few seconds we tell you, in simple words, whether it is real or a scam and what to do.</p>
+        <p className="muted small">If it is real, an AI helper can fill the application form for you; it always stops and asks you before submitting.</p>
+      </div>
       <div className="card-head">
         <h2>1 · What did you receive?</h2>
         <div className="demo-btns">
-          <span className="muted small">Demo cases:</span>
-          <button type="button" className="chip ok" disabled={busy} onClick={() => loadDemo("genuine", "video")}>Genuine notice</button>
-          <button type="button" className="chip bad" disabled={busy} onClick={() => loadDemo("fraud", "video")}>Deepfake video</button>
-          <button type="button" className="chip bad" disabled={busy} onClick={() => loadDemo("fraud", "image")}>Edited image</button>
-          <button type="button" className="chip bad" disabled={busy} onClick={() => loadDemo("fraud_hindi", "image")}>हिन्दी forward</button>
+          <span className="muted small">Try an example:</span>
+          <button type="button" className="chip ok" disabled={busy} onClick={() => loadDemo("genuine", "video")}>✅ Real scholarship notice</button>
+          <button type="button" className="chip bad" disabled={busy} onClick={() => loadDemo("fraud", "video")}>🎬 Edited video</button>
+          <button type="button" className="chip bad" disabled={busy} onClick={() => loadDemo("fraud", "image")}>🖼️ Edited photo</button>
+          <button type="button" className="chip bad" disabled={busy} onClick={() => loadDemo("fraud_hindi", "image")}>💬 Hindi WhatsApp scam</button>
         </div>
       </div>
 

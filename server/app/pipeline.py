@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
 
-from . import config
+from . import config, plain
 from .ai import cache, router, sanitize
 from .forensics import language, media, sources, text
 
@@ -298,8 +298,6 @@ def run(inputs: dict) -> dict:
     # Guardrail: off-topic input (a selfie, a random question) gets no trust verdict at all.
     if _off_topic(claim, scheme, text_result, media_tamper, found):
         verdict = "off_topic"
-        warnings.insert(0, "This doesn't look like a public-service claim (scheme, benefit, fee, deadline or official "
-                           "notice). FactVerify only checks government-service claims.")
 
     agent_allowed = verdict == "authentic" and scheme is not None and bool(scheme.get("playbook")) and not deepfake
     if verdict == "authentic" and scheme is None:
@@ -324,7 +322,20 @@ def run(inputs: dict) -> dict:
         # 5-20 s, and the verdict should not wait for that.
         voice["service"] = router.get("voice") is not None
 
+    # ---- Plain-language explanation for citizens (translated when they asked for another language)
+    explain = plain.build(verdict, scheme, text_result, media_results, found, deepfake)
+    explain["lang"] = "en"
+    if reply_code != "en":
+        flat = {"h": explain["headline"], **{f"w{i}": w for i, w in enumerate(explain["why"])},
+                **{f"d{i}": d for i, d in enumerate(explain["do"])}}
+        tr = translate(flat, reply_code)
+        if tr and tr.get("h"):
+            explain = {"headline": tr["h"], "why": [tr.get(f"w{i}") or w for i, w in enumerate(explain["why"])],
+                       "do": [tr.get(f"d{i}") or d for i, d in enumerate(explain["do"])], "lang": reply_code,
+                       "english": explain}
+
     return {
+        "plain": explain,
         "authenticity": authenticity,
         "manipulationScore": round(1 - authenticity, 2),
         "verdict": verdict,

@@ -50,18 +50,13 @@ function App() {
         <div className="health">
           {health ? (
             <>
-              <span className="dot ok" /> API healthy
-              {!health.features.video_forensics && <span className="pill warn">no ffmpeg</span>}
-              <span className={`pill ${health.ai_team.some((t) => t.active) ? "ok" : "warn"}`}
-                title={health.ai_team.map((t) => `${t.role}: ${t.active ? `${t.name} (${t.model})` : "off"}`).join("\n")}>
-                AI team {health.ai_team.filter((t) => t.active).length}/{health.ai_team.length} active
-              </span>
+              <span className="dot ok" /> Online
               {health.features.auth_required && (
                 <input className="token" type="password" placeholder="API token" value={token}
                   onChange={(e) => { setTok(e.target.value); setToken(e.target.value); }} />
               )}
             </>
-          ) : <><span className="dot bad" /> offline</>}
+          ) : <><span className="dot bad" /> Connecting…</>}
         </div>
       </header>
 

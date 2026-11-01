@@ -173,7 +173,7 @@ def test_off_topic_guardrail(server):
     ing = ingest(server, "How are you today? Tell me a joke about cats.")
     res = verify(server, ing["audit_id"])
     assert res["verdict"] == "off_topic" and res["agentAllowed"] is False
-    assert "public-service claim" in res["warnings"][0]
+    assert "government scheme" in res["plain"]["headline"]
 
 
 def test_spoken_summary_handles_every_verdict():

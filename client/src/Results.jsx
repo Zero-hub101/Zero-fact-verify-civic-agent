@@ -67,11 +67,29 @@ function VoiceReply({ voice }) {
 }
 
 const VERDICT = {
-  authentic: { label: "Verified authentic", cls: "ok" },
-  unverified: { label: "Could not verify", cls: "warn" },
-  likely_fraudulent: { label: "Likely fraudulent", cls: "bad" },
-  off_topic: { label: "Not a public-service claim", cls: "warn" },
+  authentic: { label: "Looks genuine", cls: "ok" },
+  unverified: { label: "Not confirmed", cls: "warn" },
+  likely_fraudulent: { label: "Likely a scam", cls: "bad" },
+  off_topic: { label: "Not about a government scheme", cls: "warn" },
 };
+
+// The part an ordinary citizen reads first: what it is, why, and what to do (in their language when asked).
+function PlainAnswer({ p }) {
+  if (!p) return null;
+  return (
+    <div className="plain">
+      <p className="plain-head">{p.headline}</p>
+      {p.why && p.why.length > 0 && (<>
+        <p className="plain-label">Why we think so</p>
+        <ul>{p.why.map((w, i) => <li key={i}>{w}</li>)}</ul>
+      </>)}
+      {p.do && p.do.length > 0 && (<>
+        <p className="plain-label">What you should do</p>
+        <ul className="do">{p.do.map((d, i) => <li key={i}>{d}</li>)}</ul>
+      </>)}
+    </div>
+  );
+}
 
 export function TrustGauge({ value, threshold }) {
   const r = 80, cx = 100, cy = 95;
@@ -373,37 +391,38 @@ export default function Results({ data, onLaunch, launching }) {
           : <TrustGauge value={r.authenticity} threshold={r.threshold} />}
         <div className="summary-body">
           <span className={`verdict ${v.cls}`}>{v.label}</span>
-          <div className="kv">
-            <span>manipulationScore <b>{r.manipulationScore.toFixed(2)}</b></span>
-            <span>deepfakeDetected <b className={r.deepfakeDetected ? "bad-text" : ""}>{String(r.deepfakeDetected)}</b></span>
-            <span>threshold <b>{r.threshold}</b></span>
-          </div>
-          {r.matched_scheme && <p className="small">Matched: <b>{r.matched_scheme.name}</b></p>}
+          <PlainAnswer p={r.plain} />
+          {r.matched_scheme && <p className="small">Scheme: <b>{r.matched_scheme.name}</b></p>}
           {r.language && r.language.code !== "en" && <p className="small">Message language: <b>{r.language.native}</b> ({r.language.name})</p>}
           {r.voice && <VoiceReply voice={r.voice} />}
           {r.warnings.map((w, i) => <p key={i} className="warn-text small">⚠ {w}</p>)}
           <div className="launch">
-            {r.verdict === "off_topic" ? (
-              <p className="muted small">Paste a message, link, image or video about a government scheme, benefit or notice.</p>
-            ) : r.verdict === "authentic" && r.matched_scheme && !r.matched_scheme.playbook ? (
-              <p className="small">✅ Looks genuine. Apply only on the official site:{" "}
-                <a href={r.matched_scheme.official_url || `https://${r.matched_scheme.official_domains[0]}`} target="_blank" rel="noreferrer">
-                  {(r.matched_scheme.official_url || r.matched_scheme.official_domains[0]).replace(/^https?:\/\//, "")}</a></p>
+            {r.verdict === "off_topic" ? null
+            : r.verdict === "authentic" && r.matched_scheme && !r.matched_scheme.playbook ? (
+              <a className="primary big link-btn" href={r.matched_scheme.official_url || `https://${r.matched_scheme.official_domains[0]}`}
+                target="_blank" rel="noreferrer">Open the official website ↗</a>
             ) : r.agentAllowed ? (
               <button className="primary big" disabled={launching || !r.has_profile} onClick={onLaunch}>
                 {launching ? "Starting agent…" : "2 · Let the agent fill the application (practice portal)"}
               </button>
             ) : (
               <div className="locked">
-                <b>🔒 Browser agent locked.</b> This claim did not pass verification, so the agent will not log in anywhere with your details.
-                <button className="ghost" disabled={launching} onClick={onLaunch}>Try to launch anyway</button>
+                <b>🔒 Form-filling helper switched off.</b> This message did not pass our checks, so we will not use your details anywhere.
+                <button className="ghost" disabled={launching} onClick={onLaunch}>Show what happens if I try anyway</button>
               </div>
             )}
-            {r.agentAllowed && !r.has_profile && <p className="warn-text small">Add your details above and verify again to use the agent.</p>}
+            {r.agentAllowed && !r.has_profile && <p className="warn-text small">To let the helper fill the form, add your details above and check again.</p>}
           </div>
         </div>
       </div>
 
+      <details className="tech">
+      <summary>Technical details for fact-checkers (scores, image forensics, AI research, sources)</summary>
+      <div className="card kv-card">
+        <span>Trust score <b>{Math.round(r.authenticity * 100)}/100</b> (needs {Math.round(r.threshold * 100)} to pass)</span>
+        <span>Manipulation score <b>{r.manipulationScore.toFixed(2)}</b></span>
+        <span>Edited or AI-made media <b className={r.deepfakeDetected ? "bad-text" : ""}>{r.deepfakeDetected ? "yes" : "no"}</b></span>
+      </div>
       {(r.media || []).length > 0 && (
         <div className="card">
           <h3>Media forensics</h3>
@@ -425,6 +444,7 @@ export default function Results({ data, onLaunch, launching }) {
       <TeamStrip team={r.ai_team} />
       <Research r={r} />
       <ClaimMatch r={r} />
+      </details>
     </div>
   );
 }

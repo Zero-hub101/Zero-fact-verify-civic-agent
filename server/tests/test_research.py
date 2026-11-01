@@ -109,7 +109,7 @@ def test_pipeline_uses_translation_and_research(gemini):
     assert res["research"]["localized"]["summary"]
     roles = {c["role"]: c for c in res["ai_team"]}
     assert roles["research"]["provider"] == "gemini" and roles["research"]["specialist"]
-    assert roles["translation"]["note"] == "combined with research"
+    assert any(c.get("note") == "combined with research" for c in res["ai_team"] if c["role"] == "translation")
     assert res["matched_scheme"]["id"] == "sch_csss"
     assert res["verdict"] == "likely_fraudulent" and res["agentAllowed"] is False
     assert any(c["field"] == "application_fee" for c in res["text"]["contradictions"])
