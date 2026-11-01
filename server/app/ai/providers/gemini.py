@@ -173,7 +173,15 @@ def _call(prompt: str, model: str, use_search: bool, parts: Optional[list] = Non
     raise GeminiError(" | ".join(errors), 404)
 
 
+_search_blocked_until = 0.0    # set when the key has no quota for Google Search grounding
+
+
 def _call_with_fallback(prompt: str, primary: str, use_search: bool, parts: Optional[list] = None) -> dict:
+    global _search_blocked_until
+    if use_search and time.time() < _search_blocked_until:
+        out = _call_with_fallback(prompt, primary, use_search=False, parts=parts)
+        out["search_unavailable"] = True
+        return out
     errors = []
     for model in _models(primary):
         try:
@@ -187,7 +195,15 @@ def _call_with_fallback(prompt: str, primary: str, use_search: bool, parts: Opti
             if e.status in (401, 403):
                 break
             log.warning("Gemini model %s failed: %s", model, e)
-    raise GeminiError(" || ".join(errors)[:900])
+    joined = " || ".join(errors)
+    if use_search and ("429" in joined or "quota" in joined.lower() or "RESOURCE_EXHAUSTED" in joined):
+        # Free keys often have no quota for Google Search grounding. Answer without it, clearly marked.
+        log.warning("Gemini search grounding unavailable (quota); retrying without search")
+        _search_blocked_until = time.time() + 600
+        out = _call_with_fallback(prompt, primary, use_search=False, parts=parts)
+        out["search_unavailable"] = True
+        return out
+    raise GeminiError(joined[:900])
 
 
 # ---------------- research ----------------
@@ -294,7 +310,8 @@ def research_claim(claim: str, scheme: Optional[dict], reply_lang: Optional[str]
     if not grounded and authenticity is not None:
         authenticity = 0.5 + (authenticity - 0.5) * 0.4     # unsourced opinion counts for little
     return {
-        "provider": "Google Gemini + Grounding with Google Search",
+        "provider": "Google Gemini" + ("" if raw.get("search_unavailable") else " + Grounding with Google Search"),
+        "search_unavailable": bool(raw.get("search_unavailable")),
         "model": raw["model"], "api": raw["api"], "seconds": raw["seconds"],
         "language": detected,
         "claim_en": str(data.get("claim_en") or "")[:6000],

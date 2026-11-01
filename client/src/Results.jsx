@@ -243,7 +243,7 @@ function Research({ r }) {
       <div className="rs-top">
         <span className={`verdict ${RS_VERDICT[rs.verdict]}`}>{rs.verdict}</span>
         {rs.already_debunked && <span className="pill bad">Already debunked by fact-checkers</span>}
-        {!rs.grounded && <span className="pill warn">No web sources returned: low weight</span>}
+        {!rs.grounded && <span className="pill warn">{rs.search_unavailable ? "Web search not available on this key: low weight" : "No web sources returned: low weight"}</span>}
       </div>
       {local && (
         <div className="local" lang={local.lang}>
