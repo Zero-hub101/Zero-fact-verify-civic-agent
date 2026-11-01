@@ -1,0 +1,5 @@
+{
+  "trusted_suffixes": ["gov.in", "nic.in", "gov", "gov.uk", "europa.eu"],
+  "trusted_exact": ["127.0.0.1", "localhost", "pib.gov.in", "india.gov.in", "scholarships.gov.in"],
+  "low_trust_hosts": ["bit.ly", "tinyurl.com", "wa.me", "t.me", "chat.whatsapp.com", "goo.gl", "cutt.ly", "rb.gy"]
+}

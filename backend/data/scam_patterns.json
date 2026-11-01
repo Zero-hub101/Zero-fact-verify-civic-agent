@@ -1,0 +1,52 @@
+{
+  "patterns": [
+    {
+      "id": "upfront_fee",
+      "label": "Asks for a fee to receive a free government benefit",
+      "weight": 0.35,
+      "regex": "(pay|deposit|transfer|send)\\b[^.]{0,40}?(fee|charge|amount|rs\\.?|₹|inr|rupees)|(processing|registration|activation|verification)\\s+(fee|charge)|शुल्क|फीस|भुगतान करें|पैसे भेज|கட்டணம்|பணம் அனுப்ப|రుసుము|ಶುಲ್ಕ|ഫീസ്|ফি দিন"
+    },
+    {
+      "id": "otp_request",
+      "label": "Requests an OTP, PIN or password",
+      "weight": 0.35,
+      "regex": "\\b(otp|one[- ]time password|upi pin|atm pin|cvv|password)\\b|ओटीपी|ओ\\.टी\\.पी|पिन बताएं|ஓடிபி|ఓటీపీ|ಒಟಿಪಿ|ഒടിപി"
+    },
+    {
+      "id": "personal_payment",
+      "label": "Payment to a personal UPI ID or phone number",
+      "weight": 0.3,
+      "regex": "(upi|gpay|phonepe|paytm)\\b[^.]{0,40}?(@|\\d{10})|\\b[\\w.-]+@(okaxis|oksbi|okicici|ybl|paytm|upi)\\b"
+    },
+    {
+      "id": "messaging_channel",
+      "label": "Directs applications to WhatsApp / Telegram instead of an official portal",
+      "weight": 0.2,
+      "regex": "\\b(whatsapp|telegram|wa\\.me|t\\.me)\\b|व्हाट्सएप|व्हाट्सऐप|टेलीग्राम|வாட்ஸ்அப்|వాట్సాప్|ವಾಟ್ಸಾಪ್|വാട്സ്ആപ്പ്|হোয়াটসঅ্যাপ"
+    },
+    {
+      "id": "false_urgency",
+      "label": "Pressure tactics and false urgency",
+      "weight": 0.15,
+      "regex": "(within|in) (24|48) hours|last chance|only today|limited seats|hurry|immediately|before midnight|24 घंटे|तुरंत|आखिरी मौका|जल्दी करें|24 மணி நேர|உடனே|24 గంటల|వెంటనే"
+    },
+    {
+      "id": "guaranteed",
+      "label": "Guaranteed approval or no eligibility checks",
+      "weight": 0.15,
+      "regex": "\\b(guaranteed|100%|no documents|no eligibility|everyone (is )?eligible|without any documents)\\b|कोई दस्तावेज़ नहीं|सभी छात्रों|गारंटी|எந்த ஆவணமும்|అన్ని విద్యార్థులకు"
+    },
+    {
+      "id": "share_forward",
+      "label": "Chain-forward instruction typical of viral hoaxes",
+      "weight": 0.1,
+      "regex": "(forward|share) (this|to) (to )?(\\d+|all|every)|फॉरवर्ड करें|शेयर करें|பகிரவும்|షేర్ చేయండి"
+    },
+    {
+      "id": "shortened_link",
+      "label": "Uses a shortened or disguised link",
+      "weight": 0.15,
+      "regex": "\\b(bit\\.ly|tinyurl\\.com|goo\\.gl|cutt\\.ly|rb\\.gy)/"
+    }
+  ]
+}

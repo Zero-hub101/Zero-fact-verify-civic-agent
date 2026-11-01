@@ -1,0 +1,34 @@
+{
+  "id": "sandbox_scholarship",
+  "name": "Scholarship Application Portal (Sandbox)",
+  "description": "Logs in, fills the application, hands the CAPTCHA to the citizen, asks for approval before final submit, then captures the application number and PDF acknowledgement.",
+  "base_url": "{PUBLIC_BASE_URL}/portal",
+  "allowed_hosts": ["127.0.0.1", "localhost"],
+  "steps": [
+    {"action": "goto", "label": "Open the portal login page", "url": "{base_url}/login"},
+    {"action": "fill_form", "label": "Enter login details", "fields": [
+      {"selector": "#full_name", "profile": "full_name", "label": "Full name"},
+      {"selector": "#dob", "profile": "dob", "label": "Date of birth"}
+    ]},
+    {"action": "click", "label": "Log in", "selector": "#login-btn", "expect_url": "/apply"},
+    {"action": "fill_form", "label": "Fill the application form", "fields": [
+      {"selector": "#email", "profile": "email", "label": "Email"},
+      {"selector": "#phone", "profile": "phone", "label": "Mobile number"},
+      {"selector": "#state", "profile": "state", "label": "State", "type": "select"},
+      {"selector": "#income", "profile": "annual_income", "label": "Annual family income"},
+      {"selector": "#course", "profile": "course", "label": "Course"},
+      {"selector": "#institution", "profile": "institution", "label": "Institution"},
+      {"selector": "#id_last4", "profile": "id_last4", "label": "National ID (last 4 digits)"}
+    ]},
+    {"action": "click", "label": "Save and continue", "selector": "#continue", "expect_url": "/verify"},
+    {"action": "human_captcha", "label": "Security check (solved by you)", "image": "#captcha-img",
+     "input": "#captcha", "submit": "#verify-btn", "expect_url": "/review"},
+    {"action": "approval_gate", "label": "Your approval to submit",
+     "message": "The application is filled in and ready. Submit it to the portal now?",
+     "then": [{"check": "#declare"}, {"click": "#submit-application"}], "expect_url": "/confirmation/"},
+    {"action": "extract", "label": "Capture the application number", "selector": "#tracking-code",
+     "pattern": "REC-\\d{5}", "save_as": "tracking_code"},
+    {"action": "download", "label": "Download the acknowledgement PDF", "selector": "#download-receipt",
+     "save_as": "receipt_pdf"}
+  ]
+}

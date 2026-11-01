@@ -1,0 +1,313 @@
+import { useRef, useState } from "react";
+
+const VERDICT = {
+  authentic: { label: "Verified authentic", cls: "ok" },
+  unverified: { label: "Could not verify", cls: "warn" },
+  likely_fraudulent: { label: "Likely fraudulent", cls: "bad" },
+};
+
+export function TrustGauge({ value, threshold }) {
+  const r = 80, cx = 100, cy = 95;
+  const pt = (v) => {
+    const a = Math.PI * (1 - v);
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+  };
+  const [x, y] = pt(Math.max(0.001, value));
+  const [tx, ty] = pt(threshold);
+  const color = value >= threshold ? "var(--ok)" : value >= 0.4 ? "var(--warn)" : "var(--bad)";
+  return (
+    <svg viewBox="0 0 200 120" className="gauge" role="img" aria-label={`Trust score ${Math.round(value * 100)} out of 100`}>
+      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} className="gauge-track" />
+      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${x} ${y}`} style={{ stroke: color }} className="gauge-fill" />
+      <line x1={tx} y1={ty} x2={cx + (tx - cx) * 0.78} y2={cy + (ty - cy) * 0.78} className="gauge-thr" />
+      <text x={cx} y={cy - 18} textAnchor="middle" className="gauge-num">{Math.round(value * 100)}</text>
+      <text x={cx} y={cy + 2} textAnchor="middle" className="gauge-sub">trust score</text>
+      <text x={cx + r + 2} y={cy + 16} textAnchor="end" className="gauge-sub">100</text>
+      <text x={cx - r - 2} y={cy + 16} textAnchor="start" className="gauge-sub">0</text>
+    </svg>
+  );
+}
+
+function Regions({ regions }) {
+  return (regions || []).map((r, i) => (
+    <div key={i} className="region" style={{ left: `${r.x * 100}%`, top: `${r.y * 100}%`, width: `${r.w * 100}%`, height: `${r.h * 100}%` }} />
+  ));
+}
+
+function ImageForensics({ m }) {
+  const [overlay, setOverlay] = useState(true);
+  const flagged = m.tamper_score >= 0.5;
+  return (
+    <div className={`media-box ${flagged ? "flagged" : ""}`}>
+      <div className="media-stage">
+        <div className="media-frame">
+          <img src={m.media_url} alt={m.file_name} />
+          {overlay && <img className="heat" src={m.heatmap_url} alt="" />}
+          {overlay && <Regions regions={m.regions} />}
+        </div>
+        {flagged && <div className="stamp">EDITED REGION DETECTED</div>}
+      </div>
+      <div className="media-tools">
+        <label><input type="checkbox" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} /> Heatmap overlay</label>
+        <Signals m={m} />
+      </div>
+    </div>
+  );
+}
+
+function Signals({ m }) {
+  return (
+    <div className="signals">
+      <span className={`pill ${m.tamper_score >= 0.6 ? "bad" : m.tamper_score > 0.3 ? "warn" : "ok"}`}>
+        Tamper {Math.round((m.tamper_score || 0) * 100)}%
+      </span>
+      {m.signals && Object.entries(m.signals).map(([k, v]) => (
+        <span key={k} className="pill subtle">{k.replace("_", " ")}: {Math.round(v * 100)}%</span>
+      ))}
+      {m.low_resolution_confidence_degraded && <span className="pill warn">low resolution</span>}
+    </div>
+  );
+}
+
+function VideoForensics({ m }) {
+  const vid = useRef(null);
+  const [t, setT] = useState(0);
+  const [sel, setSel] = useState(null);
+  const frames = m.frames || [];
+  const active = frames.find((f) => f.flagged && t >= f.time - 0.05);
+  const anyFlag = frames.some((f) => f.flagged);
+  const selected = sel !== null ? frames[sel] : null;
+  return (
+    <div className={`media-box ${active ? "flagged live" : ""}`}>
+      <div className="media-stage">
+        {selected ? (
+          <>
+            <div className="media-frame">
+              <img src={selected.thumb_url} alt={`frame at ${selected.time}s`} />
+              {selected.heatmap_url && <img className="heat" src={selected.heatmap_url} alt="" />}
+              <Regions regions={selected.regions} />
+            </div>
+            <button className="back" onClick={() => setSel(null)}>◀ back to video</button>
+          </>
+        ) : (
+          <video ref={vid} src={m.media_url} controls muted playsInline onTimeUpdate={(e) => setT(e.target.currentTime)} />
+        )}
+        {(active && !selected) && <div className="stamp">MANIPULATION FROM {active.time}s</div>}
+      </div>
+      {m.error ? <p className="warn-text">{m.error}</p> : (
+        <>
+          <div className="frames">
+            {frames.map((f, i) => (
+              <button key={i} className={`frame ${f.flagged ? "bad" : ""} ${sel === i ? "sel" : ""}`}
+                onClick={() => { setSel(i); }} title={`${f.time}s · ${Math.round(f.score * 100)}%`}>
+                <img src={f.thumb_url} alt="" />
+                <span>{f.time}s</span>
+              </button>
+            ))}
+          </div>
+          <div className="media-tools">
+            <span className="muted small">{anyFlag ? "Red frames: manipulation signals. Click a frame to inspect it." : "Sampled frames · click to inspect"}</span>
+            <Signals m={m} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function highlight(text, flags) {
+  const ev = (flags || []).map((f) => f.evidence).filter(Boolean);
+  if (!ev.length) return text;
+  const re = new RegExp(`(${ev.map((e) => e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+  return text.split(re).map((part, i) => (i % 2 ? <mark key={i}>{part}</mark> : part));
+}
+
+
+const STATUS_ICON = { supported: ["✓", "ok"], contradicted: ["✗", "bad"], unverified: ["?", "warn"] };
+const RS_VERDICT = { authentic: "ok", misleading: "warn", fraudulent: "bad", unverifiable: "warn" };
+
+function TeamStrip({ team }) {
+  if (!team || !team.length) return null;
+  return (
+    <div className="team-strip">
+      <span className="muted small">AI models used:</span>
+      {team.map((c, i) => (
+        <span key={i} className={`team-chip ${c.error ? "err" : c.specialist ? "spec" : "stand"}`}
+          title={c.error || c.note || `${c.seconds}s`}>
+          <b>{c.role}</b> {c.model}{!c.specialist && <i> stand-in</i>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Research({ r }) {
+  const rs = r.research;
+  if (!rs) {
+    return (
+      <div className="card research off">
+        <h3>Live web research</h3>
+        <p className="muted small">No research model is active. Add <code>GEMINI_API_KEY</code> to <code>.env</code> to research every claim on the
+          live web with Google Search, with a source link for each finding.</p>
+      </div>
+    );
+  }
+  if (rs.error) return <div className="card research"><h3>Live web research</h3><p className="warn-text">{rs.error}</p></div>;
+  const local = rs.localized && rs.localized.lang !== "en" ? rs.localized : null;
+  return (
+    <div className="card research">
+      <div className="card-head">
+        <h3>Live web research <span className="muted small">· every finding linked to its source</span></h3>
+        <div>
+          <span className="pill subtle">{rs.language.native} detected</span>
+          <span className="pill subtle" title={rs.api}>research: {rs.model} · {rs.seconds}s</span>
+        </div>
+      </div>
+      <div className="rs-top">
+        <span className={`verdict ${RS_VERDICT[rs.verdict]}`}>{rs.verdict}</span>
+        {rs.already_debunked && <span className="pill bad">Already debunked by fact-checkers</span>}
+        {!rs.grounded && <span className="pill warn">No web sources returned: low weight</span>}
+      </div>
+      {local && (
+        <div className="local" lang={local.lang}>
+          <p className="big-local">{local.summary}</p>
+          {local.advice && <p className="advice">👉 {local.advice}</p>}
+          <span className="muted small">{local.lang_name} reply by the translation model</span>
+        </div>
+      )}
+      {rs.summary && <p className={local ? "muted small" : ""}>{rs.summary}</p>}
+      {!local && rs.advice && <p className="advice">👉 {rs.advice}</p>}
+      {rs.claim_en && rs.language.code !== "en" && (
+        <details className="translation"><summary>English translation of the claim</summary><p>{rs.claim_en}</p></details>
+      )}
+      <ul className="evidence">
+        {rs.findings.map((f, i) => {
+          const [icon, cls] = STATUS_ICON[f.status];
+          return (
+            <li key={i} className={cls}>
+              <span className="ev-icon">{icon}</span>
+              <div>
+                <b>{f.point}</b>
+                <p>{f.evidence}</p>
+                {f.source_ids.length > 0 && (
+                  <div className="proof">Proof: {f.source_ids.map((sid) => rs.sources[sid] && (
+                    <a key={sid} href={rs.sources[sid].url} target="_blank" rel="noreferrer" className={`src ${rs.sources[sid].trust}`}>
+                      [{sid + 1}] {rs.sources[sid].title}</a>
+                  ))}</div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {rs.sources.length > 0 && (
+        <div className="sources">
+          <div className="col-h">Sources found by Google Search</div>
+          <ol>
+            {rs.sources.map((src, i) => (
+              <li key={i}>
+                <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a>
+                <span className={`pill ${src.trust === "official" ? "ok" : src.trust === "fact_checker" ? "ok" : "subtle"}`}>
+                  {src.trust === "official" ? "official" : src.trust === "fact_checker" ? "fact-checker" : "web"}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {rs.search_queries.length > 0 && (
+        <p className="muted small">Searched: {rs.search_queries.map((q, i) => <code key={i} className="q">{q}</code>)}</p>
+      )}
+    </div>
+  );
+}
+
+function ClaimMatch({ r }) {
+  const t = r.text || {};
+  const s = r.matched_scheme;
+  if (!t.present) return null;
+  return (
+    <div className="card">
+      <h3>Claim vs official record</h3>
+      <div className="compare">
+        <div>
+          <div className="col-h">What the claim says</div>
+          <p className="claim-text">{highlight(r.claim_text, t.scam_flags)}</p>
+          {(t.sources || []).map((src, i) => (
+            <span key={i} className={`pill ${src.trust === "official" ? "ok" : src.trust === "low" ? "bad" : "warn"}`}>{src.host}: {src.trust}</span>
+          ))}
+        </div>
+        <div>
+          <div className="col-h">Trusted registry</div>
+          {s ? (
+            <dl className="record">
+              <dt>Scheme</dt><dd>{s.name}</dd>
+              <dt>Benefit</dt><dd>Rs {s.benefit_amount.toLocaleString("en-IN")} {s.benefit_period}</dd>
+              <dt>Application fee</dt><dd>{s.application_fee ? `Rs ${s.application_fee}` : "Free"}</dd>
+              <dt>Income limit</dt><dd>Rs {s.income_limit.toLocaleString("en-IN")}</dd>
+              <dt>Deadline</dt><dd>{new Date(s.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</dd>
+              <dt>Official sites</dt><dd>{s.official_domains.filter((d) => !/localhost|127\./.test(d)).join(", ")}</dd>
+            </dl>
+          ) : <p className="muted">No matching scheme in the registry.</p>}
+        </div>
+      </div>
+      <ul className="checks">
+        {(t.confirmations || []).map((c, i) => <li key={`c${i}`} className="ok">✓ {c.detail}</li>)}
+        {(t.contradictions || []).map((c, i) => <li key={`x${i}`} className="bad">✗ {c.detail}</li>)}
+        {(t.scam_flags || []).map((h, i) => <li key={`s${i}`} className="warn">⚠ {h.label} <span className="muted">“{h.evidence}”</span></li>)}
+      </ul>
+      {r.ai_review && r.ai_review.verdict && (
+        <div className="ai-review"><b>AI review ({r.ai_review.model}):</b> {r.ai_review.verdict}. {(r.ai_review.reasons || []).join(" ")}</div>
+      )}
+    </div>
+  );
+}
+
+export default function Results({ data, onLaunch, launching }) {
+  const r = data.result;
+  const v = VERDICT[r.verdict];
+  const findings = (r.media || []).flatMap((m) => m.findings || []);
+  return (
+    <div className="results">
+      <div className="card summary">
+        <TrustGauge value={r.authenticity} threshold={r.threshold} />
+        <div className="summary-body">
+          <span className={`verdict ${v.cls}`}>{v.label}</span>
+          <div className="kv">
+            <span>manipulationScore <b>{r.manipulationScore.toFixed(2)}</b></span>
+            <span>deepfakeDetected <b className={r.deepfakeDetected ? "bad-text" : ""}>{String(r.deepfakeDetected)}</b></span>
+            <span>threshold <b>{r.threshold}</b></span>
+          </div>
+          {r.matched_scheme && <p className="small">Matched: <b>{r.matched_scheme.name}</b></p>}
+          {r.language && r.language.code !== "en" && <p className="small">Message language: <b>{r.language.native}</b> ({r.language.name})</p>}
+          {r.warnings.map((w, i) => <p key={i} className="warn-text small">⚠ {w}</p>)}
+          <div className="launch">
+            {r.agentAllowed ? (
+              <button className="primary big" disabled={launching || !r.has_profile} onClick={onLaunch}>
+                {launching ? "Starting agent…" : "2 · Apply on the official portal with the agent"}
+              </button>
+            ) : (
+              <div className="locked">
+                <b>🔒 Browser agent locked.</b> This claim did not pass verification, so the agent will not log in anywhere with your details.
+                <button className="ghost" disabled={launching} onClick={onLaunch}>Try to launch anyway</button>
+              </div>
+            )}
+            {r.agentAllowed && !r.has_profile && <p className="warn-text small">Add your details above and verify again to use the agent.</p>}
+          </div>
+        </div>
+      </div>
+
+      {(r.media || []).length > 0 && (
+        <div className="card">
+          <h3>Media forensics</h3>
+          {r.media.map((m, i) => m.kind === "image" ? <ImageForensics key={i} m={m} /> : <VideoForensics key={i} m={m} />)}
+          <ul className="findings">{findings.map((f, i) => <li key={i}>{f}</li>)}</ul>
+          <p className="muted small">Forensic scores are signals, not proof: compression-history (JPEG ghost), clone detection, metadata and frame-consistency checks.</p>
+        </div>
+      )}
+
+      <TeamStrip team={r.ai_team} />
+      <Research r={r} />
+      <ClaimMatch r={r} />
+    </div>
+  );
+}
