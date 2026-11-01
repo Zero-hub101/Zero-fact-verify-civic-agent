@@ -43,13 +43,13 @@ PROVIDERS: dict[str, Provider] = {p.id: p for p in (
 
 ROLES = {
     "research": ("AI_RESEARCH", "gemini", "Live web research with sources"),
-    "translation": ("AI_TRANSLATION", "sarvam,gemini", "Language communication"),
+    "translation": ("AI_TRANSLATION", "sarvam,gemini,groq", "Language communication"),
     "speech": ("AI_SPEECH", "sarvam,groq,elevenlabs,whisper,gemini", "Speech to text"),
     "voice": ("AI_VOICE", "sarvam,elevenlabs", "Spoken reply (text to speech)"),
     "ocr": ("AI_OCR", "ocrspace,tesseract", "Text in images"),
     "image_ai": ("AI_IMAGE_AI", "localdetector,sightengine", "AI-generated image & deepfake detection"),
     "vision": ("AI_VISION", "openai,gemini", "Image understanding"),
-    "review": ("AI_REVIEW", "mistral,cohere,ollama,claude,openai", "Independent second opinion"),
+    "review": ("AI_REVIEW", "mistral,cohere,ollama,groq,claude,openai", "Independent second opinion"),
 }
 
 
@@ -64,32 +64,66 @@ def assigned(role: str) -> list[str]:
 
 
 def get(role: str) -> Optional[Provider]:
+    c = candidates(role)
+    return c[0] if c else None
+
+
+def candidates(role: str) -> list[Provider]:
+    out = []
     for pid in assigned(role):
         p = PROVIDERS.get(pid)
         if p and role in p.roles and p.enabled():
-            return p
-    return None
+            out.append(p)
+    return out
 
 
 def call(role: str, method: Callable[[Provider], Any]) -> tuple[Any, Optional[dict]]:
-    """Run `method(provider)` on the provider for `role`. Returns (result, credit) or (None, None)."""
-    p = get(role)
-    if not p:
+    """Run `method(provider)` for `role`, trying each configured provider in order until one succeeds.
+
+    Returns (result, credit). If every provider fails, returns ({"error": ...}, credit of the last attempt)
+    and the earlier failures are listed in credit["failed"]."""
+    failed: list[dict] = []
+    for p in candidates(role):
+        t0 = time.time()
+        credit = {"role": role, "provider": p.id, "name": p.name, "model": p.model_for(role),
+                  "specialist": role in p.specialist_roles}
+        try:
+            result = method(p)
+            err = result.get("error") if isinstance(result, dict) else None
+        except Exception as e:  # noqa: BLE001 - one model failing must never break the audit
+            result, err = None, str(e)
+        credit["seconds"] = round(time.time() - t0, 1)
+        if not err:
+            if failed:
+                credit["fallback_from"] = [f["provider"] for f in failed]
+            return result, credit
+        log.warning("%s via %s failed: %s", role, p.id, err)
+        failed.append({"provider": p.id, "name": p.name, "error": short_error(err)})
+    if not failed:
         return None, None
-    t0 = time.time()
-    credit = {"role": role, "provider": p.id, "name": p.name, "model": p.model_for(role),
-              "specialist": role in p.specialist_roles}
-    try:
-        result = method(p)
-        credit["seconds"] = round(time.time() - t0, 1)
-        if isinstance(result, dict) and result.get("error"):
-            credit["error"] = result["error"]
-        return result, credit
-    except Exception as e:  # noqa: BLE001 - one model failing must never break the audit
-        log.warning("%s via %s failed: %s", role, p.id, e)
-        credit["error"] = str(e)[:300]
-        credit["seconds"] = round(time.time() - t0, 1)
-        return {"error": f"{p.name} ({role}) failed: {str(e)[:200]}"}, credit
+    last = failed[-1]
+    credit = {"role": role, "provider": last["provider"], "name": last["name"], "model": "", "specialist": False,
+              "error": last["error"], "failed": failed}
+    names = ", ".join(f"{f['name']} ({f['error']})" for f in failed)
+    return {"error": f"No AI service available for {role}: {names}"}, credit
+
+
+def short_error(msg: str) -> str:
+    """Turn raw provider errors into one readable line (shown to users and in reports)."""
+    m = msg.lower()
+    if "missing the permission" in m or "missing_permissions" in m:
+        return "API key lacks permission for this feature (edit the key's permissions)"
+    if "credit" in m or "insufficient_quota" in m or "quota" in m:
+        return "out of credits or quota"
+    if " 401" in m or " 403" in m or "api key not valid" in m or "invalid_api_key" in m or "e555" in m:
+        return "API key rejected (check the key in your settings file)"
+    if " 429" in m or "rate limit" in m:
+        return "rate limited, try again in a minute"
+    if " 404" in m or "not found" in m:
+        return "model not found (check the model name setting)"
+    if "network" in m or "timed out" in m or "timeout" in m:
+        return "network problem or timeout"
+    return msg.split("\n")[0][:160]
 
 
 def lineup() -> list[dict]:

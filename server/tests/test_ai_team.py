@@ -42,6 +42,8 @@ def fake_http(monkeypatch):
             return FakeResp(content=b"ID3" + b"\0" * 2000)
         if "elevenlabs.io/v1/speech-to-text" in url:
             return FakeResp({"text": "hello", "language_code": "hin"})
+        if "groq.com" in url and "chat/completions" in url:
+            return FakeResp({"choices": [{"message": {"content": json.dumps({"t": "[groq] translated"})}}]})
         if "groq.com" in url and "transcriptions" in url:
             return FakeResp({"text": "नमस्ते", "language": "hindi"})
         if "groq.com" in url and "translations" in url:
@@ -120,7 +122,7 @@ def test_full_team_pipeline(fake_http, demo_media, monkeypatch):
         {"path": str(up), "name": "notice.jpg", "kind": "image", "public_url": "/media/team_test.jpg"}]})
     roles = {c["role"]: c["provider"] for c in res["ai_team"]}
     assert roles == {"ocr": "ocrspace", "image_ai": "sightengine", "vision": "openai", "research": "gemini",
-                     "translation": "sarvam", "voice": "sarvam", "review": "openai"}
+                     "translation": "sarvam", "voice": "sarvam", "review": "groq"}
     m = res["media"][0]
     assert m["ai_detection"]["ai_generated"] == 0.93 and m["tamper_score"] >= 0.93 and res["deepfakeDetected"]
     assert m["vision"]["description"] and m["ocr_text"]
@@ -140,7 +142,7 @@ def test_failing_provider_falls_back_gracefully(fake_http, monkeypatch, demo_med
     up.write_bytes((demo_media / "genuine_notice.jpg").read_bytes())
     res = pipeline.run({"text": "Post-Matric Merit Scholarship Rs 12,000 per year", "files": [
         {"path": str(up), "name": "n.jpg", "kind": "image", "public_url": "/media/x.jpg"}]})
-    assert any("401" in w for w in res["warnings"])
+    assert any("API key rejected" in w for w in res["warnings"])
     assert any(c["role"] == "image_ai" and c.get("error") for c in res["ai_team"])
     assert res["media"][0]["tamper_score"] == 0.0           # local forensics still ran
 
@@ -197,3 +199,25 @@ def test_local_ai_image_detector(monkeypatch, demo_media):
         monkeypatch.setattr(lad, "_classifier", lambda m, labels=labels: (
             lambda img, top_k=5: [{"label": l, "score": sc} for l, sc in labels]))
         assert lad.LocalAiDetectorProvider().detect_ai_image(demo_media / "genuine_notice.jpg")["ai_generated"] == expect
+
+
+def test_failed_key_falls_back_to_next_service(fake_http, monkeypatch):
+    def bad(*a, **k):
+        raise http.ProviderError("Sarvam translate HTTP 403: invalid_api_key_error", 403)
+    monkeypatch.setattr(sarvam.SarvamProvider, "translate", bad)
+    monkeypatch.setenv("AI_TRANSLATION", "sarvam,groq")
+    result, credit = router.call("translation", lambda p: p.translate({"t": "hello"}, "hi"))
+    assert result == {"t": "[groq] translated"}
+    assert credit["provider"] == "groq" and credit["fallback_from"] == ["sarvam"]
+    assert router.short_error("Sarvam translate HTTP 403: invalid") == "API key rejected (check the key in your settings file)"
+
+
+def test_c2pa_provenance_is_not_tampering(tmp_path, demo_media):
+    from app.forensics import media
+    raw = (demo_media / "genuine_notice.jpg").read_bytes()
+    tagged = tmp_path / "tagged.jpg"
+    payload = b"JP\x00\x01jumb....jumdc2pa....Anthropic Claude"
+    segment = b"\xff\xeb" + (len(payload) + 2).to_bytes(2, "big") + payload
+    tagged.write_bytes(raw[:20] + segment + raw[20:])
+    r = media.analyze_image(tagged, "t")
+    assert r["signals"]["metadata"] == 0.0 and r["metadata"].get("provenance")

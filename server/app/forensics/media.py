@@ -167,13 +167,21 @@ def metadata_analysis(img: Image.Image, raw_path: Optional[Path] = None) -> dict
             findings.append(f"Metadata references editing/generation software: '{kw}'")
     if any(k.lower().replace("info:", "") in AI_CHUNK_KEYS for k in meta):
         findings.append("Embedded AI-generation parameters found in file metadata")
+    provenance = None
     if raw_path and raw_path.exists():
         head = raw_path.read_bytes()[:400_000]
-        if b"c2pa" in head or b"jumb" in head:
-            findings.append("Content Credentials (C2PA) manifest present - check its edit history")
+        if b"c2pa" in head and b"jumb" in head:
+            # Content Credentials are provenance, not tampering: phones, editors and file services add them.
+            # Only a manifest that declares AI generation counts as a signal.
+            if b"trainedAlgorithmicMedia" in head or b"compositeWithTrainedAlgorithmicMedia" in head:
+                findings.append("Content Credentials declare this image as AI-generated (AI-generation)")
+            else:
+                provenance = "Has Content Credentials (C2PA provenance record)"
     score = 0.0
     if findings:
-        score = 0.85 if any("AI-generation" in f or "generation software" in f for f in findings) else 0.6
+        score = 0.85 if any("AI-generat" in f or "generation software" in f for f in findings) else 0.6
+    if provenance:
+        meta["provenance"] = provenance
     return {"score": score, "findings": findings, "metadata": meta}
 
 

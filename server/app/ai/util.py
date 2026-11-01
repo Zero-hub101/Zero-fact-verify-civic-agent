@@ -1,4 +1,5 @@
 """Helpers shared by providers: language codes, image shrinking, audio chunking."""
+import os
 import shutil
 import subprocess
 import tempfile
@@ -34,7 +35,9 @@ def shrink_image(path: Path, max_side: int = 1000, max_bytes: int = 950_000) -> 
     """JPEG copy within free-tier limits (OCR.space: 1 MB, 1000 px). Caller deletes the temp file."""
     img = Image.open(path).convert("RGB")
     img.thumbnail((max_side, max_side))
-    out = Path(tempfile.mkstemp(suffix=".jpg")[1])
+    fd, name = tempfile.mkstemp(suffix=".jpg")
+    os.close(fd)                       # Windows cannot reopen or delete a file that is still open
+    out = Path(name)
     for q in (90, 80, 70, 60, 50):
         img.save(out, "JPEG", quality=q)
         if out.stat().st_size <= max_bytes:
