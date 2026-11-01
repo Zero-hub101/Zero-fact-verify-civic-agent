@@ -28,6 +28,7 @@ os.environ["AGENT_STEP_TIMEOUT_MS"] = "8000"
 os.environ["ALLOW_URL_FETCH"] = "false"
 os.environ["AI_CACHE_HOURS"] = "0"                # every test sees fresh AI calls
 os.environ["RATE_LIMIT_PER_10MIN"] = "100000"
+os.environ["RATE_LIMIT_PER_MIN"] = "100000"
 
 
 @pytest.fixture(scope="session")

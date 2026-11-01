@@ -357,10 +357,10 @@ def run(inputs: dict) -> dict:
         "matched_scheme": _public_scheme(scheme),
         "media": media_results,
         "url": url_result,
-        "ai_review": ai if ai else {"status": "skipped", "reason": (
+        "ai_review": ai if ai else {"status": "skipped", "verdict": "skipped", "reason": (
             "Not about a government scheme, so no AI review was needed." if clearly_off else
             "No AI review service was available.")},
-        "research": found if found else {"status": "skipped", "reason": (
+        "research": found if found else {"status": "skipped", "verdict": "skipped", "reason": (
             "Not about a government scheme, so no AI research was needed." if clearly_off else
             "No AI research service was available or the message had no text.")},
         "seconds": round(time.time() - t_start, 1),

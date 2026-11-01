@@ -79,7 +79,8 @@ def test_junk_is_rejected_and_report_is_escaped(server):
     assert long.status_code == 400 and "too long" in long.json()["detail"]
     ok = requests.post(f"{server}/api/audit/ingest", data={"text": ("PM Kisan pay Rs 499 fee now. " * 200)[:4000]}, timeout=30)
     assert ok.status_code == 200 and len(ok.json()["inputs"]["text"]) == 4000
-    for noise in ["asdfghjklqwertyuiopzxcvbnm", "A" * 2000, "sdfghjkl qwrtyp zxcvbnm", "ababababababababababab"]:
+    for noise in ["asdfghjklqwertyuiopzxcvbnm", "A" * 2000, "sdfghjkl qwrtyp zxcvbnm", "ababababababababababab",
+                  "asdf 😀😀😀 !!! @@@ qwer ### $$$ %%% zxcv ^^^ &&&", "a1!@#$%^&*()_+{}|:<>?~`-=[]\\;',./ b2 😀😀"]:
         assert requests.post(f"{server}/api/audit/ingest", data={"text": noise}, timeout=30).status_code == 400, noise
     assert requests.head(f"{server}/health", timeout=10).status_code == 200
 
@@ -89,3 +90,6 @@ def test_off_topic_skips_ai_research_and_review(server):
     res = requests.post(f"{server}/api/audit/forensics", json={"audit_id": a["audit_id"]}, timeout=60).json()
     assert res["verdict"] == "off_topic"
     assert res["ai_review"]["status"] == "skipped" and res["research"]["status"] == "skipped" and res["seconds"] >= 0
+    assert res["ai_review"]["verdict"] == "skipped" and res["research"]["verdict"] == "skipped"
+    r = requests.get(f"{server}/media/x.jpg", timeout=10)
+    assert r.headers.get("X-Content-Type-Options") == "nosniff"

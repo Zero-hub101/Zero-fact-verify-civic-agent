@@ -22,7 +22,7 @@
 
 Trust score = weighted mix of the rule engine (45%), AI research (40% with live sources, 15% without) and the independent AI review (15%), then lowered by media forensics. Every response has the same keys; skipped parts are `{"status": "skipped", "reason": ...}` and `seconds` gives the processing time.
 
-**Input rules:** messages over 4,000 characters, under 12 letters/digits, or keyboard-mash/noise are rejected with a clear message before any AI call. Uploads: PNG/JPG/WEBP/MP4/MOV/WEBM up to 20 MB and 40 megapixels, content-checked. **Abuse limits:** 40 checks per visitor per 10 minutes. User text is HTML-escaped in reports and rendered as plain text in the UI.
+**Input rules:** messages over 4,000 characters, under 12 letters/digits, mostly symbols/emoji, or keyboard-mash/noise are rejected with a clear message before any AI call. Uploads: PNG/JPG/WEBP/MP4/MOV/WEBM up to 20 MB and 40 megapixels, content-checked. **Abuse limits:** 20 requests per minute and 60 per 10 minutes per visitor (HTTP 429 with `Retry-After`). Uploads are served with `nosniff` and a locked-down Content-Security-Policy. On the hosted server the example buttons are pre-run after every restart and the instance keeps itself awake, so examples answer in seconds. User text is HTML-escaped in reports and rendered as plain text in the UI.
 
 ## What it does
 

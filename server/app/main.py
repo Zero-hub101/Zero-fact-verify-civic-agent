@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import threading
 import time
+import unicodedata
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -43,8 +44,34 @@ async def lifespan(_app):
     threading.Thread(target=_purge_loop, daemon=True, name="profile-purge").start()
     from .ai.providers.local_ai_detector import warm_up
     threading.Thread(target=warm_up, daemon=True, name="ai-detector-warmup").start()
+    if os.getenv("RENDER_EXTERNAL_URL") and os.getenv("DEMO_WARMUP", "true") == "true":
+        threading.Thread(target=_warm_and_keep_awake, args=(os.environ["RENDER_EXTERNAL_URL"],), daemon=True,
+                         name="demo-warmup").start()
     log.info("FactVerify ready. Portal sandbox at %s/portal/", config.PUBLIC_BASE_URL)
     yield
+
+
+def _warm_and_keep_awake(base: str) -> None:
+    """On the hosted server: pre-run the example buttons once after each start (results are remembered, so judges get
+    them in seconds), then ping /health every 10 minutes so the free instance does not fall asleep."""
+    import requests
+    time.sleep(20)
+    for sc, media in (("fraud_hindi", "image"), ("genuine", "video"), ("genuine", "image"), ("fraud", "video"),
+                      ("fraud", "image")):
+        try:
+            a = demo(sc, media, "auto")
+            pipeline_result = pipeline.run(db.get_audit(a["audit_id"])["inputs"])
+            db.set_audit_result(a["audit_id"], {**pipeline_result, "audit_id": a["audit_id"], "has_profile": True},
+                                "verified" if pipeline_result["agentAllowed"] else "blocked")
+            log.info("Demo warm-up %s/%s: %s", sc, media, pipeline_result["verdict"])
+        except Exception as e:  # noqa: BLE001 - warm-up is best effort
+            log.warning("Demo warm-up %s/%s failed: %s", sc, media, e)
+    while True:
+        try:
+            requests.get(f"{base.rstrip('/')}/health", timeout=20)
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(600)
 
 
 def _purge_loop() -> None:
@@ -62,6 +89,15 @@ app = FastAPI(title="FactVerify Civic Agent", version="1.0.0", lifespan=lifespan
               description="Verify public-service claims and media, then safely complete official applications.")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                    allow_methods=["*"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")      # never treat an upload as a web page
+    if request.url.path.startswith(("/media/", "/artifacts/")):
+        resp.headers["Content-Security-Policy"] = "default-src 'none'; img-src 'self'; media-src 'self'; sandbox"
+    return resp
 
 
 # ---------------- auth ----------------
@@ -185,6 +221,10 @@ def _looks_like_noise(t: str) -> bool:
     chars = [c.lower() for c in t if c.isalnum()]
     if not chars:
         return True
+    visible = [c for c in t if not c.isspace()]
+    lettery = sum(1 for c in visible if c.isalnum() or unicodedata.category(c).startswith("M"))  # incl. Indic vowel signs
+    if len(visible) >= 15 and lettery / len(visible) < 0.5:       # mostly symbols / emoji with a few letters
+        return True
     top = max(chars.count(c) for c in set(chars))
     if len(chars) >= 12 and top / len(chars) > 0.6:                 # "AAAAAAAAAAAA", "abababab..."
         return True
@@ -208,15 +248,22 @@ def _meaningful(t: str) -> int:
 
 # ---- simple per-visitor rate limit (in memory; enough for one server)
 _HITS: dict[str, list[float]] = {}
-RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_10MIN", "40"))
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_10MIN", "60"))
+RATE_LIMIT_PER_MIN = int(os.getenv("RATE_LIMIT_PER_MIN", "20"))
 
 
 def rate_limit(request: Request) -> None:
     ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
     now = time.time()
     hits = [t for t in _HITS.get(ip, []) if now - t < 600]
+    if sum(1 for t in hits if now - t < 60) >= RATE_LIMIT_PER_MIN:
+        log.warning("Rate limit (per minute) hit for %s", ip)
+        raise HTTPException(429, "Too many requests in the last minute. Please wait a minute and try again.",
+                            headers={"Retry-After": "60"})
     if len(hits) >= RATE_LIMIT:
-        raise HTTPException(429, "Too many checks from your connection in the last 10 minutes. Please wait a few minutes.")
+        log.warning("Rate limit (per 10 minutes) hit for %s", ip)
+        raise HTTPException(429, "Too many checks from your connection in the last 10 minutes. Please wait a few minutes.",
+                            headers={"Retry-After": "300"})
     hits.append(now)
     _HITS[ip] = hits
     if len(_HITS) > 5000:                                  # keep memory bounded
@@ -274,7 +321,7 @@ def ai_team():
     return ai_router.lineup()
 
 
-@app.post("/api/audit/ingest", dependencies=auth)
+@app.post("/api/audit/ingest", dependencies=auth + [Depends(rate_limit)])
 async def ingest(text: str = Form(""), url: str = Form(""), transcript: str = Form(""), profile: str = Form(""),
                  reply_language: str = Form("auto"), files: list[UploadFile] = File(default=[])):
     """F1: accept claim text, a URL, media files and the citizen profile."""

@@ -371,7 +371,7 @@ function ClaimMatch({ r }) {
         {(t.contradictions || []).map((c, i) => <li key={`x${i}`} className="bad">✗ {c.detail}</li>)}
         {(t.scam_flags || []).map((h, i) => <li key={`s${i}`} className="warn">⚠ {h.label} <span className="muted">“{h.evidence}”</span></li>)}
       </ul>
-      {r.ai_review && r.ai_review.verdict && (
+      {r.ai_review && r.ai_review.verdict && r.ai_review.status !== "skipped" && (
         <div className="ai-review"><b>AI review ({r.ai_review.model}):</b> {r.ai_review.verdict}. {(r.ai_review.reasons || []).join(" ")}</div>
       )}
     </div>
@@ -421,6 +421,8 @@ export default function Results({ data, onLaunch, launching }) {
         <span>Trust score <b>{Math.round(r.authenticity * 100)}/100</b> (needs {Math.round(r.threshold * 100)} to pass)</span>
         <span>Manipulation score <b>{r.manipulationScore.toFixed(2)}</b></span>
         <span>Edited or AI-made media <b className={r.deepfakeDetected ? "bad-text" : ""}>{r.deepfakeDetected ? "yes" : "no"}</b></span>
+        {r.audit_id && <span>Audit ID <b><code>{r.audit_id}</code></b> · <a href={`/api/audit/${r.audit_id}/report`} target="_blank" rel="noreferrer">report</a></span>}
+        {r.seconds != null && <span>Checked in <b>{r.seconds}s</b></span>}
       </div>
       {(r.media || []).length > 0 && (
         <div className="card">

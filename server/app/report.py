@@ -104,7 +104,7 @@ def build(audit: dict, task: Optional[dict], receipt: Optional[dict]) -> str:
         lines.append("")
 
     ai = r.get("ai_review")
-    if ai and "verdict" in ai:
+    if ai and "verdict" in ai and ai.get("status") != "skipped":
         lines += ["## AI review", "", f"- Model: {ai.get('model')}; verdict: {ai['verdict']}; authenticity {ai['authenticity']}"]
         lines += [f"- {x}" for x in ai.get("reasons", [])] + [""]
 
