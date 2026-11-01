@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>FactVerify Civic Agent - FORGE '26</title>
+<style>
+@page { size: 1280px 720px; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", "Noto Sans", Arial, sans-serif; color: #1d2433; }
+.s { width: 1280px; height: 720px; padding: 56px 72px 48px; position: relative; page-break-after: always; overflow: hidden;
+     background: #fbf8f2; }
+.s:last-child { page-break-after: auto; }
+.tag { color: #e07b14; font-weight: 700; letter-spacing: .12em; font-size: 15px; text-transform: uppercase; }
+h1 { font-size: 64px; margin: 10px 0 8px; } h2 { font-size: 42px; margin: 8px 0 22px; }
+.sub { font-size: 26px; color: #46506a; margin: 0 0 30px; }
+p, li { font-size: 22px; line-height: 1.45; } ul { padding-left: 26px; margin: 0; } li { margin: 6px 0; }
+.foot { position: absolute; left: 72px; right: 72px; bottom: 22px; font-size: 13px; color: #7a8194;
+        display: flex; justify-content: space-between; border-top: 1px solid #e6e1d6; padding-top: 8px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+.card { background: #fff; border: 1px solid #e6e1d6; border-radius: 14px; padding: 20px 24px; }
+.card h3 { margin: 0 0 8px; font-size: 24px; }
+.card p, .card li { font-size: 19px; }
+.big { font-size: 30px; font-weight: 700; }
+.bad { color: #c62f2b; } .ok { color: #1d8a4b; }
+.flow { display: flex; gap: 14px; align-items: stretch; margin-top: 10px; }
+.flow .card { flex: 1; } .arrow { align-self: center; font-size: 34px; color: #e07b14; }
+.title { background: linear-gradient(135deg, #14305e, #1f4f8f); color: #fff; }
+.title .sub { color: #dbe6ff; } .title .foot { color: #c9d6f2; border-color: #3b5f99; }
+.pill { display: inline-block; background: #e07b14; color: #fff; border-radius: 999px; padding: 6px 16px; font-size: 18px; margin-right: 8px; }
+.arch { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.arch .card { padding: 14px 16px; } .arch .card h3 { font-size: 20px; } .arch .card p { font-size: 16px; margin: 0; }
+.muted { color: #6b7387; }
+.small { font-size: 18px; }
+</style></head><body>
+
+<section class="s title">
+  <div class="tag" style="color:#ffb35c">FORGE '26 · Gen AI Buildathon · Civic Pulse, Digital Governance &amp; Public Information</div>
+  <h1>FactVerify Civic Agent</h1>
+  <p class="sub">Check it's real. Then apply safely.</p>
+  <p style="font-size:26px;max-width:1000px">An AI team that tells citizens, in their own language, whether a message about a government
+    scheme is real or a scam, why, and what to do. If it is real, an AI agent fills the application, and it always asks the citizen before submitting.</p>
+  <p style="margin-top:34px"><span class="pill">Live demo</span> factverify-civic-agent.onrender.com</p>
+  <p><span class="pill">Code</span> github.com/Zero-hub101/Zero-fact-verify-civic-agent</p>
+  <p style="margin-top:26px;font-size:20px">Team Scene Boys: Kiruthik Pranav B K · Kavin Raj B · Karthikeyan S</p>
+  <div class="foot"><span>Independent student project. Not affiliated with or endorsed by any government body.</span><span>1 / 6</span></div>
+</section>
+
+<section class="s">
+  <div class="tag">The problem</div>
+  <h2>Fake scheme messages cost families money and trust</h2>
+  <div class="cols">
+    <div>
+      <div class="card"><p class="bad big">"Pay ₹499 registration fee to get ₹50,000 scholarship. Share the OTP on WhatsApp within 24 hours."</p>
+      <p class="muted small">A typical forward, often in Hindi, Tamil or Hinglish, sometimes with an edited copy of a real notice.</p></div>
+    </div>
+    <div>
+      <ul>
+        <li><b>Who is hurt:</b> students, farmers, senior citizens and their families, often reading in their own language.</li>
+        <li><b>Why it works:</b> real schemes and fake ones look alike; official portals are hard to use; people are rushed.</li>
+        <li><b>The cost:</b> lost money and personal data, and real benefits go unclaimed because people stop trusting genuine notices.</li>
+        <li><b>The need:</b> a simple, trustworthy check in their language before acting, then a safe route to apply.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Independent student project. Not affiliated with or endorsed by any government body.</span><span>2 / 6</span></div>
+</section>
+
+<section class="s">
+  <div class="tag">The solution</div>
+  <h2>Paste it. Understand it. Apply safely.</h2>
+  <div class="flow">
+    <div class="card"><h3>1 · Paste</h3><p>The message (any Indian language or Hinglish), a link, or a photo or video of the notice.</p></div>
+    <div class="arrow">→</div>
+    <div class="card"><h3>2 · Plain answer</h3><p>"This looks like a scam" or "This looks genuine", <b>why</b> and <b>what to do</b>, in the citizen's language, with a spoken reply.</p></div>
+    <div class="arrow">→</div>
+    <div class="card"><h3>3 · Apply safely</h3><p>If genuine, an AI agent fills the form step by step. The human solves the CAPTCHA and approves the final submit.</p></div>
+  </div>
+  <div class="cols" style="margin-top:26px">
+    <div class="card"><h3 class="bad">Scam example</h3><p>"Do not pay any money or share an OTP. Apply only on scholarships.gov.in. If you already paid, call 1930 or report at cybercrime.gov.in."</p></div>
+    <div class="card"><h3 class="ok">Genuine example</h3><p>Matched to the real Central Sector Scheme of Scholarship (₹12,000/year, income up to ₹4.5 lakh) and linked to the official website.</p></div>
+  </div>
+  <div class="foot"><span>Independent student project. Not affiliated with or endorsed by any government body.</span><span>3 / 6</span></div>
+</section>
+
+<section class="s">
+  <div class="tag">Key features</div>
+  <h2>What makes it reliable</h2>
+  <div class="cols">
+    <div class="card"><h3>AI team, one job each</h3><p>Gemini researches and reads images (and backs up every role), Sarvam translates and speaks Indian languages,
+      OCR.space reads text in images, Sightengine checks for AI-made images, Groq gives an independent second opinion.</p></div>
+    <div class="card"><h3>Catches disguised scams</h3><p>Fee and OTP requests even when written "0TP" or "6 digit code", personal UPI IDs, WhatsApp-only applications,
+      look-alike "gov-in" links, edited photos and videos (compression and frame forensics).</p></div>
+    <div class="card"><h3>Real data, no mock datasets</h3><p>Real central schemes (Central Sector Scholarship, PM-KISAN, Ayushman Bharat PM-JAY) with official sources,
+      plus live AI research on every claim.</p></div>
+    <div class="card"><h3>Safe by design</h3><p>Agent runs only on approved sites, max 10 steps, with human gates. Data encrypted (AES-256) and deleted after 24 h.
+      Every step is logged in a tamper-proof, hash-chained record with a downloadable report.</p></div>
+  </div>
+  <div class="foot"><span>Independent student project. Not affiliated with or endorsed by any government body.</span><span>4 / 6</span></div>
+</section>
+
+<section class="s">
+  <div class="tag">Technical architecture</div>
+  <h2>How it is built</h2>
+  <div class="arch">
+    <div class="card"><h3>React client</h3><p>Plain-language results, voice playback, fact-checker console, mobile layout.</p></div>
+    <div class="card"><h3>FastAPI server</h3><p>Input validation, rate limiting, audit trail, Markdown provenance reports.</p></div>
+    <div class="card"><h3>Verification engine</h3><p>Scheme matching, scam-pattern rules (multi-script, disguise-aware), JPEG-ghost, copy-move and video frame forensics.</p></div>
+    <div class="card"><h3>AI router</h3><p>Roles (research, translation, speech, voice, OCR, image AI, vision, review) with ordered fallbacks; Gemini as universal backup; every answer validated.</p></div>
+    <div class="card"><h3>Browser agent</h3><p>Playwright playbooks; pauses for CAPTCHA, approval, missing data and payment pages; captures receipt and PDF.</p></div>
+    <div class="card"><h3>Data &amp; security</h3><p>SQLite with AES-256-GCM profiles, 24 h wipe, append-only hash-chained receipts.</p></div>
+    <div class="card"><h3>Caching</h3><p>Paid AI results remembered for 24 h: repeat checks are instant and cost nothing.</p></div>
+    <div class="card"><h3>Deployment</h3><p>Docker on Render (ffmpeg + Chromium), /health endpoint, keys kept in host settings, never in code.</p></div>
+  </div>
+  <p class="small muted" style="margin-top:16px">Tested with 66 automated tests and 16,000+ stress-test inputs (broken links, corrupt files, junk AI answers, disguised scams).</p>
+  <div class="foot"><span>Independent student project. Not affiliated with or endorsed by any government body.</span><span>5 / 6</span></div>
+</section>
+
+<section class="s">
+  <div class="tag">Impact &amp; future scope</div>
+  <h2>Where it goes next</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><b>More schemes, automatically:</b> load official scheme data from open government datasets so every central and state scheme is covered.</li>
+        <li><b>Where people already are:</b> a WhatsApp / SMS helpline that answers forwards directly, by text and voice.</li>
+        <li><b>More languages and voices</b> for all 22 scheduled languages.</li>
+        <li><b>Real portals, with permission:</b> agent playbooks built together with the official portal owners.</li>
+        <li><b>Reporting:</b> send confirmed scams to fact-checkers and cyber crime reporting in one tap.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Honest limits today</h3>
+      <p>Forensics give signals, not proof. Free AI keys mean live web search is limited, so unsourced research is weighted lower.
+        The agent demo uses a clearly labelled practice copy of the scholarship form; it never submits to a real government site.</p>
+      <p style="margin-top:18px"><b>Try it:</b> factverify-civic-agent.onrender.com</p>
+    </div>
+  </div>
+  <div class="foot"><span>Independent student project. Not affiliated with or endorsed by any government body.</span><span>6 / 6</span></div>
+</section>
+</body></html>
