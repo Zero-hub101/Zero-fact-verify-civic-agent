@@ -55,6 +55,33 @@ function ImageForensics({ m }) {
   );
 }
 
+function AiExtras({ m }) {
+  const d = m.ai_detection;
+  const v = m.vision;
+  if (!d && !v && !m.ocr_text) return null;
+  return (
+    <div className="ai-extras">
+      {d && (
+        <div className={`ai-det ${Math.max(d.ai_generated || 0, d.deepfake || 0) >= 0.7 ? "bad" : "ok"}`}>
+          <b>AI-generated check:</b> {Math.round((d.ai_generated || 0) * 100)}% AI-generated
+          {d.deepfake !== null && d.deepfake !== undefined && <> · {Math.round(d.deepfake * 100)}% face deepfake</>}
+          {d.frame_time !== null && d.frame_time !== undefined && <> · frame {d.frame_time}s</>}
+        </div>
+      )}
+      {v && (
+        <div className="vision">
+          <b>What the image shows:</b> {v.description}
+          {v.claims?.length > 0 && <div className="small">Claims: {v.claims.join(" · ")}</div>}
+          {v.red_flags?.length > 0 && <div className="small bad-text">Red flags: {v.red_flags.join(" · ")}</div>}
+        </div>
+      )}
+      {m.ocr_text && (
+        <details className="ocr"><summary>Text read from the image</summary><p>{m.ocr_text}</p></details>
+      )}
+    </div>
+  );
+}
+
 function Signals({ m }) {
   return (
     <div className="signals">
@@ -126,6 +153,9 @@ function highlight(text, flags) {
 const STATUS_ICON = { supported: ["✓", "ok"], contradicted: ["✗", "bad"], unverified: ["?", "warn"] };
 const RS_VERDICT = { authentic: "ok", misleading: "warn", fraudulent: "bad", unverifiable: "warn" };
 
+const ROLE_LABEL = { research: "Research", translation: "Translation", speech: "Speech", voice: "Voice", ocr: "OCR",
+  image_ai: "AI-image check", vision: "Vision", review: "Review" };
+
 function TeamStrip({ team }) {
   if (!team || !team.length) return null;
   return (
@@ -134,7 +164,7 @@ function TeamStrip({ team }) {
       {team.map((c, i) => (
         <span key={i} className={`team-chip ${c.error ? "err" : c.specialist ? "spec" : "stand"}`}
           title={c.error || c.note || `${c.seconds}s`}>
-          <b>{c.role}</b> {c.model}{!c.specialist && <i> stand-in</i>}
+          <b>{ROLE_LABEL[c.role] || c.role}</b> {c.model}{!c.specialist && <i> stand-in</i>}
         </span>
       ))}
     </div>
@@ -279,6 +309,12 @@ export default function Results({ data, onLaunch, launching }) {
           </div>
           {r.matched_scheme && <p className="small">Matched: <b>{r.matched_scheme.name}</b></p>}
           {r.language && r.language.code !== "en" && <p className="small">Message language: <b>{r.language.native}</b> ({r.language.name})</p>}
+          {r.voice && (
+            <div className="voice">
+              <span>🔊 Listen ({r.voice.lang_name})</span>
+              <audio controls src={r.voice.url} preload="none" />
+            </div>
+          )}
           {r.warnings.map((w, i) => <p key={i} className="warn-text small">⚠ {w}</p>)}
           <div className="launch">
             {r.agentAllowed ? (
@@ -299,7 +335,16 @@ export default function Results({ data, onLaunch, launching }) {
       {(r.media || []).length > 0 && (
         <div className="card">
           <h3>Media forensics</h3>
-          {r.media.map((m, i) => m.kind === "image" ? <ImageForensics key={i} m={m} /> : <VideoForensics key={i} m={m} />)}
+          {r.media.map((m, i) => (
+            <div key={i}>
+              {m.kind === "image" ? <ImageForensics m={m} /> : <VideoForensics m={m} />}
+              <AiExtras m={m} />
+              {m.transcript && (
+                <details className="ocr" open><summary>Speech in the video{m.transcript_language ? ` (${m.transcript_language})` : ""}</summary>
+                  <p>{m.transcript}</p>{m.transcript_en && <p className="muted">{m.transcript_en}</p>}</details>
+              )}
+            </div>
+          ))}
           <ul className="findings">{findings.map((f, i) => <li key={i}>{f}</li>)}</ul>
           <p className="muted small">Forensic scores are signals, not proof: compression-history (JPEG ghost), clone detection, metadata and frame-consistency checks.</p>
         </div>

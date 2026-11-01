@@ -52,12 +52,9 @@ function App() {
             <>
               <span className="dot ok" /> API healthy
               {!health.features.video_forensics && <span className="pill warn">no ffmpeg</span>}
-              <span className="team-mini" title="AI model per role (set in .env)">
-                {health.ai_team.map((t) => (
-                  <span key={t.role} className={`tm ${t.status}`} title={`${t.label}: ${t.model || "off"}`}>
-                    {t.role} · {t.active || "off"}
-                  </span>
-                ))}
+              <span className={`pill ${health.ai_team.some((t) => t.active) ? "ok" : "warn"}`}
+                title={health.ai_team.map((t) => `${t.role}: ${t.active ? `${t.name} (${t.model})` : "off"}`).join("\n")}>
+                AI team {health.ai_team.filter((t) => t.active).length}/{health.ai_team.length} active
               </span>
               {health.features.auth_required && (
                 <input className="token" type="password" placeholder="API token" value={token}

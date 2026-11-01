@@ -53,8 +53,9 @@ export default function Auditor({ onOpen }) {
             ))}
           </tbody>
         </table>
-        <p className="muted small">"Stand-in" means the research model is covering this job until a specialist model is added
-          (copy <code>backend/app/ai/providers/_template.py</code>, then set e.g. <code>AI_TRANSLATION=yourmodel</code>).</p>
+        <p className="muted small">A role uses the first model in its preference order that has an API key. "Stand-in" means a
+          general model is covering the job because no specialist key is set. Add keys in <code>.env</code>; to add a new model, copy
+          <code> backend/app/ai/providers/_template.py</code>.</p>
       </div>
 
       <div className="card">

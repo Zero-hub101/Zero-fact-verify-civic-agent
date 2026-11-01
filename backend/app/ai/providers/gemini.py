@@ -341,10 +341,31 @@ def translate_texts(texts: dict, target: str) -> dict:
     return {k: str(out.get(k) or v) for k, v in texts.items()}
 
 
+VISION_PROMPT = """Describe this image for a fact-checker. Return ONLY JSON:
+{"description": "one sentence", "text_in_image": "all readable text, original language",
+ "claims": ["factual claims made (amounts, fees, deadlines, contacts)"],
+ "red_flags": ["visual signs of fraud or editing"]}"""
+
+
+def describe_image(path: Path) -> dict:
+    from ..util import shrink_image
+    small = shrink_image(path, 1280, 3_000_000)
+    try:
+        data = base64.b64encode(small.read_bytes()).decode()
+    finally:
+        small.unlink(missing_ok=True)
+    raw = _call_with_fallback(VISION_PROMPT, config.GEMINI_FAST_MODEL, use_search=False,
+                              parts=[{"kind": "image", "mime_type": "image/jpeg", "data": data}])
+    d = extract_json(raw["text"]) or {}
+    return {"description": str(d.get("description", ""))[:400], "text_in_image": str(d.get("text_in_image", ""))[:3000],
+            "claims": [str(x)[:300] for x in d.get("claims", [])][:10],
+            "red_flags": [str(x)[:300] for x in d.get("red_flags", [])][:10]}
+
+
 class GeminiProvider(Provider):
     id = "gemini"
     name = "Google Gemini"
-    roles = {"research", "translation", "speech", "review"}
+    roles = {"research", "translation", "speech", "vision"}
     specialist_roles = {"research"}
 
     def enabled(self) -> bool:
@@ -361,3 +382,6 @@ class GeminiProvider(Provider):
 
     def transcribe(self, audio_path):
         return transcribe_mp3(audio_path)
+
+    def describe_image(self, image_path):
+        return describe_image(image_path)

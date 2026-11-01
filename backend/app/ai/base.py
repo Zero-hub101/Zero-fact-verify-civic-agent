@@ -8,6 +8,10 @@ FactVerify runs a team of models, each doing the job it is best at:
     translation   translate claims and write replies in the user's      translate()
                   language
     speech        turn audio in videos into text (any language)         transcribe()
+    voice         read the verdict aloud in the user's language         speak()
+    ocr           read printed text in images (Indian scripts too)      ocr()
+    image_ai      detect AI-generated images and deepfakes              detect_ai_image()
+    vision        understand an image: what it shows and claims         describe_image()
     review        independent second opinion on the claim               review()
 
 A provider implements only the methods for roles it supports and lists them in `roles`.
@@ -56,4 +60,20 @@ class Provider:
 
     def review(self, claim: str, scheme: Optional[dict]) -> dict:
         """Return {verdict, authenticity, reasons[]}."""
+        raise NotImplementedError
+
+    def speak(self, text: str, lang: str) -> tuple[bytes, str]:
+        """Return (audio_bytes, file_extension) of `text` spoken in lang (ISO 639-1)."""
+        raise NotImplementedError
+
+    def ocr(self, image_path: Path, lang_hint: str = "") -> dict:
+        """Return {text, language}."""
+        raise NotImplementedError
+
+    def detect_ai_image(self, image_path: Path) -> dict:
+        """Return {ai_generated: 0-1, deepfake: 0-1 or None}."""
+        raise NotImplementedError
+
+    def describe_image(self, image_path: Path) -> dict:
+        """Return {description, text_in_image, claims[], red_flags[]}."""
         raise NotImplementedError

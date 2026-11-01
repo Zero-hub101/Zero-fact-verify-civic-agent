@@ -28,7 +28,7 @@ _load_dotenv()
 ENCRYPTION_KEY = os.getenv("FACTVERIFY_ENCRYPTION_KEY", "")          # base64, 32 bytes
 API_TOKEN = os.getenv("FACTVERIFY_API_TOKEN", "")                     # optional auth for /api
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-4-argon")                    # flagship reasoning model
 GEMINI_FALLBACK_MODELS = os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.8-flash,gemini-2.5-pro")

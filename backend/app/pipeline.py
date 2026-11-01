@@ -1,29 +1,19 @@
 """Verification pipeline: runs text, URL and media analysis in parallel and combines them into one score."""
 import logging
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-from typing import Optional
-
 import shutil
 import subprocess
 import tempfile
+import threading
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Optional
 
 from . import config
 from .ai import router
 from .forensics import language, media, sources, text
 
 log = logging.getLogger("factverify.pipeline")
-
-
-def ocr_image(path: Path) -> Optional[str]:
-    """Read text from an image when Tesseract is installed (optional)."""
-    try:
-        import pytesseract  # type: ignore
-        from PIL import Image
-        out = pytesseract.image_to_string(Image.open(path))
-        return out.strip() or None
-    except Exception:  # noqa: BLE001 - optional dependency
-        return None
 
 
 def _public_scheme(s: Optional[dict]) -> Optional[dict]:
@@ -42,43 +32,111 @@ def _extract_audio(video: Path, out_dir: str) -> Optional[Path]:
     return audio if audio.exists() and audio.stat().st_size > 2000 else None
 
 
+def _check_video_frames(res: dict, use) -> Optional[dict]:
+    """Send up to 3 frames (flagged first, then the middle one) to the IMAGE_AI role."""
+    frames = res["frames"]
+    picks = [f for f in frames if f.get("flagged")][:2] + [frames[len(frames) // 2]]
+    best = None
+    for fr in list({id(f): f for f in picks}.values())[:3]:
+        path = config.ARTIFACT_DIR / fr["thumb_url"].rsplit("/", 1)[-1]
+        det = use("image_ai", lambda pr, path=path: pr.detect_ai_image(path))
+        if det:
+            score = max(det.get("ai_generated") or 0, det.get("deepfake") or 0)
+            fr["ai_generated"] = round(score, 3)
+            if best is None or score > max(best.get("ai_generated") or 0, best.get("deepfake") or 0):
+                best = {**det, "frame_time": fr["time"]}
+    return best
+
+
+def _apply_ai_detection(res: dict, det: dict) -> None:
+    ai = det.get("ai_generated") or 0
+    df = det.get("deepfake") or 0
+    res["ai_detection"] = {"ai_generated": round(ai, 3), "deepfake": round(df, 3) if det.get("deepfake") is not None
+                           else None, "frame_time": det.get("frame_time")}
+    res.setdefault("signals", {})["ai_generated"] = round(max(ai, df), 3)
+    score = max(ai, df)
+    if score >= 0.7:
+        res["tamper_score"] = round(max(res.get("tamper_score") or 0, score), 3)
+        what = "a face deepfake" if df >= ai else "fully AI-generated"
+        where = f" (frame at {det['frame_time']}s)" if det.get("frame_time") is not None else ""
+        res.setdefault("findings", []).insert(0, f"AI detector: {round(score * 100)}% likely {what}{where}")
+        res["findings"] = [f for f in res["findings"] if not f.startswith("No manipulation signals")]
+
+
+def _spoken_summary(verdict: str, authenticity: float, found: Optional[dict], scheme: Optional[dict],
+                    deepfake: bool) -> str:
+    if found and found.get("summary"):
+        return f"{found['summary']} {found.get('advice', '')}".strip()
+    head = {"authentic": "This claim appears genuine.", "unverified": "This claim could not be verified.",
+            "likely_fraudulent": "Warning. This claim is likely fraudulent."}[verdict]
+    parts = [head, f"Trust score {round(authenticity * 100)} out of 100."]
+    if deepfake:
+        parts.append("The image or video shows signs of manipulation.")
+    if scheme:
+        fee = "free" if not scheme["application_fee"] else f"Rs {scheme['application_fee']}"
+        parts.append(f"The official {scheme['name']} gives Rs {scheme['benefit_amount']:,} {scheme['benefit_period']}, "
+                     f"and applying is {fee}.")
+    if verdict != "authentic":
+        parts.append("Do not pay any fee or share your OTP.")
+    return " ".join(parts)
+
+
 def run(inputs: dict) -> dict:
     files = inputs.get("files", [])
     url = inputs.get("url") or None
     warnings: list[str] = []
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    team: list[dict] = []                         # which model did which job in this run
+    lock = threading.Lock()
+
+    def use(role, fn):
+        result, credit = router.call(role, fn)
+        with lock:
+            if credit:
+                team.append(credit)
+            if isinstance(result, dict) and result.get("error"):
+                warnings.append(result["error"])
+                return None
+        return result
+
+    lang_hint = language.detect(inputs.get("text") or "")["code"]
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
         url_future = pool.submit(sources.fetch_url_text, url) if url else None
         media_futures = []
         for f in files:
             p = Path(f["path"])
             if f["kind"] == "image":
-                media_futures.append((f, pool.submit(media.analyze_image, p, Path(f["name"]).stem[:40])))
-                media_futures.append((f, pool.submit(ocr_image, p)))
+                media_futures.append((f, p, pool.submit(media.analyze_image, p, Path(f["name"]).stem[:40]), {
+                    # ---- OCR, IMAGE_AI and VISION roles run in parallel with local forensics
+                    "ocr": pool.submit(use, "ocr", lambda pr, p=p: pr.ocr(p, lang_hint)),
+                    "image_ai": pool.submit(use, "image_ai", lambda pr, p=p: pr.detect_ai_image(p)),
+                    "vision": pool.submit(use, "vision", lambda pr, p=p: pr.describe_image(p)),
+                }))
             elif f["kind"] == "video":
-                media_futures.append((f, pool.submit(media.analyze_video, p)))
+                media_futures.append((f, p, pool.submit(media.analyze_video, p), {}))
 
         url_result = url_future.result() if url_future else None
         media_results, ocr_texts = [], []
-        for f, fut in media_futures:
+        for f, p, fut, extra in media_futures:
             res = fut.result()
-            if isinstance(res, dict):
-                res["file_name"] = f["name"]
-                res["media_url"] = f["public_url"]
-                media_results.append(res)
-            elif isinstance(res, str):
-                ocr_texts.append(res)
-
-    team: list[dict] = []                         # which model did which job in this run
-
-    def use(role, fn):
-        result, credit = router.call(role, fn)
-        if credit:
-            team.append(credit)
-        if isinstance(result, dict) and result.get("error"):
-            warnings.append(result["error"])
-            return None
-        return result
+            res["file_name"] = f["name"]
+            res["media_url"] = f["public_url"]
+            ocr = extra["ocr"].result() if extra else None
+            if ocr and ocr.get("text"):
+                res["ocr_text"] = ocr["text"]
+                ocr_texts.append(ocr["text"])
+            vis = extra["vision"].result() if extra else None
+            if vis:
+                res["vision"] = vis
+                if not (ocr and ocr.get("text")) and vis.get("text_in_image"):
+                    ocr_texts.append(vis["text_in_image"])
+            det = extra["image_ai"].result() if extra else None
+            if res["kind"] == "video" and res.get("frames"):
+                det = _check_video_frames(res, use)
+            if det:
+                _apply_ai_detection(res, det)
+            media_results.append(res)
 
     # ---- SPEECH role: audio track of each video -> text (+ English via the translation role)
     for m in media_results:
@@ -205,6 +263,25 @@ def run(inputs: dict) -> dict:
     if verdict == "authentic" and scheme is None:
         warnings.append("Claim looks clean but does not match any scheme in the registry, so no portal route is available.")
 
+    # ---- VOICE role: speak the verdict in the citizen's language
+    voice = None
+    if router.get("voice"):
+        spoken_lang, spoken = "en", _spoken_summary(verdict, authenticity, found, scheme, deepfake)
+        loc = (found or {}).get("localized")
+        if reply_code != "en":
+            if loc and loc.get("summary"):
+                spoken_lang, spoken = reply_code, f"{loc['summary']} {loc.get('advice', '')}".strip()
+            else:
+                tr = use("translation", lambda p: p.translate({"t": spoken}, reply_code))
+                if tr and tr.get("t"):
+                    spoken_lang, spoken = reply_code, tr["t"]
+        audio = use("voice", lambda p: p.speak(spoken, spoken_lang))
+        if audio and isinstance(audio, tuple):
+            name = f"voice_{uuid.uuid4().hex[:10]}.{audio[1]}"
+            (config.ARTIFACT_DIR / name).write_bytes(audio[0])
+            voice = {"url": f"/artifacts/{name}", "lang": spoken_lang, "lang_name": language.name_for(spoken_lang),
+                     "text": spoken}
+
     return {
         "authenticity": authenticity,
         "manipulationScore": round(1 - authenticity, 2),
@@ -224,6 +301,7 @@ def run(inputs: dict) -> dict:
         "reply_language": {"code": reply_code, "name": language.name_for(reply_code)},
         "claim_en": claim_en,
         "ai_team": team,
+        "voice": voice,
         "rule_score": rule_score,
         "warnings": warnings,
     }

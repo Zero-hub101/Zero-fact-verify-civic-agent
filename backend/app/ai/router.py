@@ -1,9 +1,13 @@
 """Routes each AI role to the model assigned to it in .env.
 
-    AI_RESEARCH=gemini            live web research with sources
-    AI_TRANSLATION=gemini         language communication (claims in, replies out)
-    AI_SPEECH=whisper,gemini      audio in videos -> text
-    AI_REVIEW=claude              independent second opinion
+    AI_RESEARCH=gemini                                  live web research with sources
+    AI_TRANSLATION=sarvam,gemini                        language communication (claims in, replies out)
+    AI_SPEECH=sarvam,groq,elevenlabs,whisper,gemini     audio in videos -> text
+    AI_VOICE=sarvam,elevenlabs                          verdict read aloud in the user's language
+    AI_OCR=ocrspace,tesseract                           text printed in images
+    AI_IMAGE_AI=sightengine                             AI-generated image / deepfake detection
+    AI_VISION=openai,gemini                             what an image shows and claims
+    AI_REVIEW=claude,openai                             independent second opinion
 
 A comma-separated list is an order of preference: the first provider that is enabled
 (has its key / package) and supports the role is used. Leave a role empty to switch it off.
@@ -16,18 +20,31 @@ from typing import Any, Callable, Optional
 
 from .base import Provider, ProviderError
 from .providers.claude import ClaudeProvider
+from .providers.elevenlabs import ElevenLabsProvider
 from .providers.gemini import GeminiProvider
+from .providers.groq import GroqProvider
+from .providers.local_tesseract import TesseractProvider
 from .providers.local_whisper import LocalWhisperProvider
+from .providers.ocrspace import OcrSpaceProvider
+from .providers.openai_provider import OpenAIProvider
+from .providers.sarvam import SarvamProvider
+from .providers.sightengine import SightengineProvider
 
 log = logging.getLogger("factverify.router")
 
-PROVIDERS: dict[str, Provider] = {p.id: p for p in (GeminiProvider(), ClaudeProvider(), LocalWhisperProvider())}
+PROVIDERS: dict[str, Provider] = {p.id: p for p in (
+    GeminiProvider(), SarvamProvider(), ElevenLabsProvider(), GroqProvider(), SightengineProvider(),
+    OcrSpaceProvider(), OpenAIProvider(), ClaudeProvider(), LocalWhisperProvider(), TesseractProvider())}
 
 ROLES = {
     "research": ("AI_RESEARCH", "gemini", "Live web research with sources"),
-    "translation": ("AI_TRANSLATION", "gemini", "Language communication"),
-    "speech": ("AI_SPEECH", "whisper,gemini", "Speech to text"),
-    "review": ("AI_REVIEW", "claude", "Independent second opinion"),
+    "translation": ("AI_TRANSLATION", "sarvam,gemini", "Language communication"),
+    "speech": ("AI_SPEECH", "sarvam,groq,elevenlabs,whisper,gemini", "Speech to text"),
+    "voice": ("AI_VOICE", "sarvam,elevenlabs", "Spoken reply (text to speech)"),
+    "ocr": ("AI_OCR", "ocrspace,tesseract", "Text in images"),
+    "image_ai": ("AI_IMAGE_AI", "sightengine", "AI-generated image & deepfake detection"),
+    "vision": ("AI_VISION", "openai,gemini", "Image understanding"),
+    "review": ("AI_REVIEW", "claude,openai", "Independent second opinion"),
 }
 
 
@@ -63,7 +80,7 @@ def call(role: str, method: Callable[[Provider], Any]) -> tuple[Any, Optional[di
         if isinstance(result, dict) and result.get("error"):
             credit["error"] = result["error"]
         return result, credit
-    except (ProviderError, NotImplementedError, OSError, ValueError) as e:
+    except Exception as e:  # noqa: BLE001 - one model failing must never break the audit
         log.warning("%s via %s failed: %s", role, p.id, e)
         credit["error"] = str(e)[:300]
         credit["seconds"] = round(time.time() - t0, 1)

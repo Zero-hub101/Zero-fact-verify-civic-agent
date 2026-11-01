@@ -2,7 +2,7 @@
 
 Check whether a public-service claim is real, then let a browser agent complete the official application, with the citizen approving every consequential step.
 
-- **AI team**: several AI models work together, each with one job: research, translation, speech or review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
+- **AI team**: 8 AI services work together, each doing one job: research, translation, speech-to-text, spoken replies, text in images, AI-image detection, image understanding and review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
 - **Research (any Indian language)**: Google Gemini 4 Argon searches the live web with Grounding with Google Search, checks every detail against official sites and fact-checkers, and links each finding to the page that proves it. It answers in the citizen's language.
 - **Verify**: claim text, links, images and videos are checked in parallel against a trusted scheme registry, scam-pattern rules and media forensics. The result is a 0–1 trust score with `manipulationScore` and `deepfakeDetected`.
 - **Gate**: the agent only launches above the 0.75 threshold. Manipulated media aborts with `aborted_security_risk` and no browser is opened.
@@ -58,6 +58,7 @@ python -m pytest -v
 | `test_profile_encrypted_at_rest` | No personal data in plain text in the database |
 | `test_receipts_are_immutable` | UPDATE/DELETE on receipts blocked; hash chain verifies |
 | `test_validation_errors` | Empty input, full national ID, bad file type rejected |
+| `test_ai_team.py` (6 tests) | Every provider's request format and response parsing (Sarvam, ElevenLabs, Groq, Sightengine, OCR.space, OpenAI), the full pipeline with all 8 roles at once, and graceful fallback when a service fails (network mocked) |
 | `test_research.py` (9 tests) | Gemini parsing for both API formats, each finding linked to its proof, Hindi translation feeding the rule engine, role routing, plugging in a specialist translation model, error handling (network mocked) |
 
 ## 3-minute demo script
@@ -72,24 +73,39 @@ python -m pytest -v
 
 To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 
-## AI team (multi-model)
+## AI team: 8 AI services, one job each
 
-| Role | Job | Default model | Setting |
-|---|---|---|---|
-| research | Live web research; every finding linked to its source | **Gemini 4 Argon** with Grounding with Google Search (specialist) | `AI_RESEARCH=gemini` |
-| translation | Claim → English for the fact checks; verdict → citizen's language | Gemini Flash as a stand-in until a language specialist is added | `AI_TRANSLATION=gemini` |
-| speech | Audio in videos → text, any language | Whisper (offline, if installed), else Gemini as a stand-in | `AI_SPEECH=whisper,gemini` |
-| review | Independent second opinion | Claude (if `ANTHROPIC_API_KEY` is set) | `AI_REVIEW=claude` |
+| # | Service | Job in FactVerify | Get the key | Setting |
+|---|---|---|---|---|
+| 1 | **Google Gemini 4 Argon** | Live web research with Google Search; each finding linked to its proof | https://aistudio.google.com/apikey | `GEMINI_API_KEY` |
+| 2 | **Sarvam AI** (Mayura, Saaras v3, Bulbul v3) | Indian-language translation, speech-to-text and spoken replies | https://dashboard.sarvam.ai | `SARVAM_API_KEY` |
+| 3 | **ElevenLabs** | Natural multilingual voice; backup speech-to-text (Scribe) | https://elevenlabs.io/app/settings/api-keys | `ELEVENLABS_API_KEY` |
+| 4 | **Groq** (Whisper Large v3) | Very fast speech-to-text and speech-to-English | https://console.groq.com/keys | `GROQ_API_KEY` |
+| 5 | **Sightengine** | Detects AI-generated images (Midjourney, DALL·E, Stable Diffusion…) and deepfakes | https://sightengine.com | `SIGHTENGINE_API_USER`, `SIGHTENGINE_API_SECRET` |
+| 6 | **OCR.space** | Reads text in images, including Hindi, Tamil, Telugu and Kannada | https://ocr.space/ocrapi | `OCR_SPACE_API_KEY` |
+| 7 | **OpenAI** (`gpt-5.4-mini`) | Image understanding: what a picture shows, claims and red flags; backup reviewer | https://platform.openai.com/api-keys | `OPENAI_API_KEY` |
+| 8 | **Anthropic Claude** (Sonnet 5.5) | Independent second opinion on the claim | https://console.anthropic.com/settings/keys | `ANTHROPIC_API_KEY` |
+| + | Whisper and Tesseract (offline, optional) | Speech-to-text and OCR without internet | `pip install faster-whisper pytesseract` | – |
 
-- **Efficient:** when the same model holds research and translation, the localised verdict is written in the same call, saving a round trip. When a specialist translation model is assigned, Gemini only researches.
-- **Visible:** the header, each result and the Fact-checker console show which model did each job. The audit report lists the models used and their timings.
-- **Adding a model:**
-  1. Copy `backend/app/ai/providers/_template.py`.
-  2. Implement `translate()` and/or `transcribe()`.
-  3. Add it to `PROVIDERS` in `backend/app/ai/router.py`.
-  4. Set `AI_TRANSLATION=<id>` / `AI_SPEECH=<id>`.
-  
-  Nothing else changes. `tests/test_research.py::test_specialist_model_plugs_in` proves this with a dummy specialist.
+**Roles and fallbacks** (set in `.env`; the first service with a key is used):
+
+| Role | Default order | What the citizen sees |
+|---|---|---|
+| research | gemini | Verdict with clickable proof links |
+| translation | sarvam → gemini | Claims understood in any Indian language; replies in theirs |
+| speech | sarvam → groq → elevenlabs → whisper → gemini | Transcript of what is said in a video |
+| voice | sarvam → elevenlabs | 🔊 "Listen" button reading the verdict in their language |
+| ocr | ocrspace → tesseract | Text read from screenshots and posters |
+| image_ai | sightengine | "93% AI-generated" warning on images and video frames |
+| vision | openai → gemini | What the image shows, its claims and red flags |
+| review | claude → openai | Second opinion blended into the score |
+
+- **You don't need every key.** Any role without a key is skipped and the app still works. Gemini alone covers research, translation, speech and vision as a stand-in.
+- **Failures are contained.** If one service errors (wrong key, quota), its role is marked with an error, a warning is shown, and the rest of the audit continues.
+- **Visible:** the header shows how many roles are active. Each result lists which models were used, and the Fact-checker console shows the full lineup.
+- **Adding another model:** copy `backend/app/ai/providers/_template.py`, add it to `PROVIDERS` in `backend/app/ai/router.py`, and list it in the role's setting.
+
+Most of these services offer a free tier or free starter credits, which is enough for a hackathon. Check each site for current limits. OpenAI and Anthropic usually need billing set up.
 
 ## How verification works
 
