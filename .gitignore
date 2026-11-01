@@ -1,7 +1,10 @@
 .env
-backend/runtime/
+factverify.env
+*.env
+!.env.example
+server/runtime/
 __pycache__/
 *.pyc
 .venv/
-frontend/node_modules/
+client/node_modules/
 .pytest_cache/

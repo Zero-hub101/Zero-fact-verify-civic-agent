@@ -1,4 +1,4 @@
-// Thin client for the FactVerify FastAPI backend.
+// Thin client for the FactVerify FastAPI server.
 let token = "";
 try { token = localStorage.getItem("fv_token") || ""; } catch { /* storage unavailable */ }
 

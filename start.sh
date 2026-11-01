@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup and start for macOS / Linux. Requires Python 3.10+.
 set -e
-cd "$(dirname "$0")/backend"
+cd "$(dirname "$0")/server"
 if [ ! -d .venv ]; then
   python3 -m venv .venv
   . .venv/bin/activate

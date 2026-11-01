@@ -55,7 +55,7 @@ export default function Auditor({ onOpen }) {
         </table>
         <p className="muted small">A role uses the first model in its preference order that has an API key. "Stand-in" means a
           general model is covering the job because no specialist key is set. Add keys in <code>.env</code>; to add a new model, copy
-          <code> backend/app/ai/providers/_template.py</code>.</p>
+          <code> server/app/ai/providers/_template.py</code>.</p>
       </div>
 
       <div className="card">
@@ -96,7 +96,7 @@ export default function Auditor({ onOpen }) {
       <div className="two">
         <div className="card">
           <h3>Trusted scheme registry</h3>
-          <p className="muted small">Edit <code>backend/data/registry.json</code> to add schemes from official notifications.</p>
+          <p className="muted small">Edit <code>server/data/registry.json</code> to add schemes from official notifications.</p>
           {registry.map((s) => (
             <div key={s.id} className="reg">
               <b>{s.name}</b> <span className="muted small">{s.source}</span>
@@ -106,7 +106,7 @@ export default function Auditor({ onOpen }) {
         </div>
         <div className="card">
           <h3>Portal playbooks</h3>
-          <p className="muted small">One JSON file per portal in <code>backend/app/agent/playbooks/</code>, max 10 steps.</p>
+          <p className="muted small">One JSON file per portal in <code>server/app/agent/playbooks/</code>, max 10 steps.</p>
           {playbooks.map((p) => (
             <div key={p.id} className="reg">
               <b>{p.name}</b>

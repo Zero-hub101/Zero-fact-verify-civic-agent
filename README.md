@@ -9,7 +9,7 @@ Check whether a public-service claim is real, then let a browser agent complete 
 - **Execute**: a Playwright agent runs at most 10 steps on approved hosts, pausing for the CAPTCHA, the final-submit approval, missing data, portal errors and payment pages.
 - **Receipt**: the confirmation code and the portal's PDF are stored as a hash-chained, append-only record, and a Markdown provenance report can be downloaded.
 
-Stack: React dashboard (prebuilt in `frontend/dist`) · FastAPI · Playwright · SQLite · AES-256-GCM.
+Stack: React dashboard (prebuilt in `client/dist`) · FastAPI · Playwright · SQLite · AES-256-GCM.
 
 ---
 
@@ -23,7 +23,7 @@ Requires **Python 3.10+**. You don't need Node, because the dashboard is already
 Or manually:
 
 ```bash
-cd backend
+cd server
 python -m venv .venv
 .venv\Scripts\activate          # Windows   (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
@@ -35,14 +35,16 @@ Open **http://127.0.0.1:8000**. API docs are at http://127.0.0.1:8000/docs and t
 
 **Turn on live research:** get a free key at https://aistudio.google.com/apikey, copy `.env.example` to `.env` and set `GEMINI_API_KEY=...`. The header then shows "Live research: Gemini".
 
-Other optional settings in `.env`: Set `FACTVERIFY_ENCRYPTION_KEY` for a stable AES key; without it, a development key is generated in `backend/runtime/`. Add `ANTHROPIC_API_KEY` to get a Claude second opinion on each claim. Set `AGENT_HEADLESS=false` to watch the agent drive a visible Chrome window.
+Your settings file can be named `.env` or `factverify.env` and goes in the project's main folder, next to `start.bat`. Both names are blocked from git, so keys never reach GitHub.
+
+Other optional settings: Set `FACTVERIFY_ENCRYPTION_KEY` for a stable AES key; without it, a development key is generated in `server/runtime/`. Add `ANTHROPIC_API_KEY` to get a Claude second opinion on each claim. Set `AGENT_HEADLESS=false` to watch the agent drive a visible Chrome window.
 
 Optional extras: **ffmpeg** (`winget install ffmpeg` / `brew install ffmpeg`) for video. `pip install pytesseract` plus the Tesseract program reads text from uploaded images. `pip install faster-whisper` transcribes video speech.
 
 ## Test
 
 ```bash
-cd backend
+cd server
 python -m pytest -v
 ```
 
@@ -107,7 +109,7 @@ To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 - **You don't need every key.** Any role without a key is skipped and the app still works. Gemini alone covers research, translation, speech and vision as a stand-in.
 - **Failures are contained.** If one service errors (wrong key, quota), its role is marked with an error, a warning is shown, and the rest of the audit continues.
 - **Visible:** the header shows how many roles are active. Each result lists which models were used, and the Fact-checker console shows the full lineup.
-- **Adding another model:** copy `backend/app/ai/providers/_template.py`, add it to `PROVIDERS` in `backend/app/ai/router.py`, and list it in the role's setting.
+- **Adding another model:** copy `server/app/ai/providers/_template.py`, add it to `PROVIDERS` in `server/app/ai/router.py`, and list it in the role's setting.
 
 Most of these services offer a free tier or free starter credits, which is enough for a hackathon. Check each site for current limits. OpenAI and Anthropic usually need billing set up.
 
@@ -133,8 +135,8 @@ Overall score: `0.5 × text + 0.5 × (1 − media tamper)`. It is capped at 0.3 
 
 ## Adding a real scheme or portal
 
-- **Scheme:** add an entry to `backend/data/registry.json` with figures from the official notification and the `playbook` id to use.
-- **Portal:** copy `backend/app/agent/playbooks/sandbox_scholarship.json`, set `base_url` and `allowed_hosts`, and map each form field to a profile field. A playbook can have at most 10 steps. The actions are `goto`, `fill_form`, `click`, `human_captcha`, `approval_gate`, `extract` and `download`. Only automate portals whose terms allow assisted access. CAPTCHAs always go to the human.
+- **Scheme:** add an entry to `server/data/registry.json` with figures from the official notification and the `playbook` id to use.
+- **Portal:** copy `server/app/agent/playbooks/sandbox_scholarship.json`, set `base_url` and `allowed_hosts`, and map each form field to a profile field. A playbook can have at most 10 steps. The actions are `goto`, `fill_form`, `click`, `human_captcha`, `approval_gate`, `extract` and `download`. Only automate portals whose terms allow assisted access. CAPTCHAs always go to the human.
 
 ## API
 
@@ -168,8 +170,8 @@ Overall score: `0.5 × text + 0.5 × (1 − media tamper)`. It is capped at 0.3 
 - Live research needs `GEMINI_API_KEY` and internet. Without it, the app falls back to the registry and rules. Google bills grounded searches per query on Gemini 3+ models, so research runs once per claim.
 - Speech transcription uses Gemini (or local faster-whisper). Image OCR needs Tesseract.
 
-## Rebuilding the dashboard (only if you edit `frontend/src`)
+## Rebuilding the dashboard (only if you edit `client/src`)
 
 ```bash
-cd frontend && npm install && npm run build
+cd client && npm install && npm run build
 ```

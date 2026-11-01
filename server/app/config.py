@@ -2,18 +2,20 @@
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent          # backend/
+BASE_DIR = Path(__file__).resolve().parent.parent          # server/
 DATA_DIR = BASE_DIR / "data"
 RUNTIME_DIR = Path(os.getenv("FACTVERIFY_RUNTIME_DIR", BASE_DIR / "runtime"))
 UPLOAD_DIR = RUNTIME_DIR / "uploads"
 ARTIFACT_DIR = RUNTIME_DIR / "artifacts"                    # heatmaps, screenshots, receipts
 DB_PATH = Path(os.getenv("FACTVERIFY_DB_PATH", RUNTIME_DIR / "factverify.db"))
-FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
+CLIENT_DIST = BASE_DIR.parent / "client" / "dist"
 
 
 def _load_dotenv() -> None:
-    """Minimal .env loader so the app runs without python-dotenv."""
-    for candidate in (BASE_DIR / ".env", BASE_DIR.parent / ".env"):
+    """Minimal .env loader so the app runs without python-dotenv. Tests set FACTVERIFY_SKIP_DOTENV=1."""
+    if os.getenv("FACTVERIFY_SKIP_DOTENV") == "1":
+        return
+    for candidate in (BASE_DIR / ".env", BASE_DIR.parent / ".env", BASE_DIR.parent / "factverify.env"):
         if candidate.exists():
             for line in candidate.read_text(encoding="utf-8").splitlines():
                 line = line.strip()

@@ -55,13 +55,13 @@ User inputs:
 * Citizen profile: full name, date of birth, phone, email, state, annual family income, course / institution, and the last 4 digits of the national ID. Stored encrypted.
 
 Trusted data sources:
-* Scheme registry (`backend/data/registry.json`): each official scheme with its official domains, benefit amount, application fee, income limit, deadline, eligibility and the portal playbook that applies to it. Teams replace or extend this file with data from official government sources.
-* Trusted domain list (`backend/data/trusted_domains.json`): official domains (e.g. `*.gov.in`, `*.nic.in`) used to score URL sources.
-* Scam pattern library (`backend/data/scam_patterns.json`): known fraud signals such as upfront fees, OTP requests, personal-number payments and false urgency.
+* Scheme registry (`server/data/registry.json`): each official scheme with its official domains, benefit amount, application fee, income limit, deadline, eligibility and the portal playbook that applies to it. Teams replace or extend this file with data from official government sources.
+* Trusted domain list (`server/data/trusted_domains.json`): official domains (e.g. `*.gov.in`, `*.nic.in`) used to score URL sources.
+* Scam pattern library (`server/data/scam_patterns.json`): known fraud signals such as upfront fees, OTP requests, personal-number payments and false urgency.
 * Optional AI reasoning: when `ANTHROPIC_API_KEY` is set, Claude adds a written analysis of the claim against the matched registry entry. The rule-based engine works without it.
 
 Portal targets:
-* Portal playbooks (`backend/app/agent/playbooks/*.json`): one file per portal, describing at most 10 steps and which profile field fills which form field.
+* Portal playbooks (`server/app/agent/playbooks/*.json`): one file per portal, describing at most 10 steps and which profile field fills which form field.
 * A sandbox scholarship portal ships with the app at `/portal` so the full agent journey can be demonstrated and tested without touching live government systems.
 
 ## 6. Processing rules and business logic
@@ -125,4 +125,4 @@ The completed project should include, as applicable:
 
 ## Definition of done
 
-The application can be started by following the README; the primary user journey works from input to output; frontend/backend integration is functional; errors are handled clearly; demo data is available; acceptance criteria can be checked; and limitations or unimplemented requirements are explicitly documented.
+The application can be started by following the README; the primary user journey works from input to output; client/backend integration is functional; errors are handled clearly; demo data is available; acceptance criteria can be checked; and limitations or unimplemented requirements are explicitly documented.

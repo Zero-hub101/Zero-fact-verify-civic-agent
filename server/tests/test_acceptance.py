@@ -1,6 +1,6 @@
 """Acceptance criteria from specs.md plus key edge cases.
 
-Run:  cd backend && python -m pytest -v
+Run:  cd server && python -m pytest -v
 """
 import json
 import re

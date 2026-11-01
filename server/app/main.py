@@ -410,14 +410,14 @@ app.mount("/portal", portal_app)
 app.mount("/artifacts", StaticFiles(directory=config.ARTIFACT_DIR), name="artifacts")
 app.mount("/media", StaticFiles(directory=config.UPLOAD_DIR), name="media")
 
-if config.FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=config.FRONTEND_DIST / "assets", check_dir=False), name="assets")
+if config.CLIENT_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=config.CLIENT_DIST / "assets", check_dir=False), name="assets")
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
         if path.startswith(("api/", "portal", "artifacts/", "media/")):
             raise HTTPException(404)
-        target = config.FRONTEND_DIST / path
-        if path and target.is_file() and config.FRONTEND_DIST in target.resolve().parents:
+        target = config.CLIENT_DIST / path
+        if path and target.is_file() and config.CLIENT_DIST in target.resolve().parents:
             return FileResponse(target)
-        return FileResponse(config.FRONTEND_DIST / "index.html")
+        return FileResponse(config.CLIENT_DIST / "index.html")

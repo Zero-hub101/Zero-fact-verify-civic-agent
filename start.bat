@@ -1,6 +1,6 @@
 @echo off
 REM One-time setup and start for Windows. Requires Python 3.10+.
-cd /d %~dp0backend
+cd /d %~dp0server
 if not exist .venv (
   python -m venv .venv
   call .venv\Scripts\activate

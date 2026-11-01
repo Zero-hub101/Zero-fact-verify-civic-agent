@@ -18,6 +18,9 @@ _sock.bind(("127.0.0.1", 0))
 PORT = _sock.getsockname()[1]
 _sock.close()
 
+os.environ["FACTVERIFY_SKIP_DOTENV"] = "1"          # never use real API keys in tests
+for _k in [k for k in os.environ if k.endswith(("_API_KEY", "_API_USER", "_API_SECRET"))]:
+    os.environ.pop(_k)
 os.environ["FACTVERIFY_RUNTIME_DIR"] = _tmp
 os.environ["FACTVERIFY_PUBLIC_BASE_URL"] = f"http://127.0.0.1:{PORT}"
 os.environ["FACTVERIFY_API_TOKEN"] = ""

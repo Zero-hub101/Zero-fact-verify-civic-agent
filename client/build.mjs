@@ -1,4 +1,4 @@
-// Builds the React dashboard into dist/ (served by the FastAPI backend at http://127.0.0.1:8000).
+// Builds the React dashboard into dist/ (served by the FastAPI server at http://127.0.0.1:8000).
 import * as esbuild from "esbuild";
 import { copyFileSync, mkdirSync } from "node:fs";
 
