@@ -26,6 +26,7 @@ os.environ["FACTVERIFY_PUBLIC_BASE_URL"] = f"http://127.0.0.1:{PORT}"
 os.environ["FACTVERIFY_API_TOKEN"] = ""
 os.environ["AGENT_STEP_TIMEOUT_MS"] = "8000"
 os.environ["ALLOW_URL_FETCH"] = "false"
+os.environ["AI_CACHE_HOURS"] = "0"                # every test sees fresh AI calls
 
 
 @pytest.fixture(scope="session")

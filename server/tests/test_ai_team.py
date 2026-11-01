@@ -142,7 +142,7 @@ def test_failing_provider_falls_back_gracefully(fake_http, monkeypatch, demo_med
     monkeypatch.setattr(sightengine.SightengineProvider, "detect_ai_image", broken)
     up = config.UPLOAD_DIR / "team_test2.jpg"
     up.write_bytes((demo_media / "genuine_notice.jpg").read_bytes())
-    res = pipeline.run({"text": "Post-Matric Merit Scholarship Rs 12,000 per year", "files": [
+    res = pipeline.run({"text": "Central Sector Scholarship Rs 12,000 per year", "files": [
         {"path": str(up), "name": "n.jpg", "kind": "image", "public_url": "/media/x.jpg"}]})
     assert any("API key rejected" in w for w in res["warnings"])
     assert any(c["role"] == "image_ai" and c.get("error") for c in res["ai_team"])

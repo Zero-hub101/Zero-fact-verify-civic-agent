@@ -65,9 +65,9 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
     const p = await api.demoProfile().catch(() => null);
     if (p) setProfile(p);
     const texts = {
-      genuine: "Post-Matric Merit Scholarship 2026-27: Rs 12,000 per year for students with family income up to Rs 2,50,000. Apply free on the official portal before 15 December 2026.",
-      fraud_hindi: "जरूरी सूचना!! पोस्ट मैट्रिक मेरिट छात्रवृत्ति में सभी छात्रों को ₹50,000 मिलेंगे। 24 घंटे में ₹499 पंजीकरण शुल्क UPI 9876543210@ybl पर भेजें और OTP व्हाट्सएप पर शेयर करें। कोई दस्तावेज़ नहीं चाहिए!",
-      fraud: "URGENT!! PM Merit Scholarship of Rs 50,000 for ALL students. Pay Rs 499 registration fee to UPI 9876543210@ybl and share the OTP on WhatsApp within 24 hours. No documents needed. Forward to 10 groups!",
+      genuine: "Central Sector Scheme of Scholarship 2026-27: Rs 12,000 per year for undergraduate students above the 80th percentile in Class 12 with family income up to Rs 4.5 lakh. Apply free on the National Scholarship Portal, scholarships.gov.in.",
+      fraud_hindi: "जरूरी सूचना!! केंद्रीय क्षेत्र छात्रवृत्ति योजना में सभी छात्रों को ₹50,000 मिलेंगे। 24 घंटे में ₹499 पंजीकरण शुल्क UPI 9876543210@ybl पर भेजें और OTP व्हाट्सएप पर शेयर करें। कोई दस्तावेज़ नहीं चाहिए!",
+      fraud: "URGENT!! Central Sector Scholarship of Rs 50,000 for ALL students. Pay Rs 499 registration fee to UPI 9876543210@ybl and share the OTP on WhatsApp within 24 hours. No documents needed. Forward to 10 groups!",
     };
     setText(texts[scenario]);
     setUrl("");

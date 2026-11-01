@@ -1,98 +1,42 @@
 {
-  "_note": "Sample trusted registry for local runs. Replace or extend each entry with figures from the official scheme notification before using with real citizens.",
+  "_note": "Real central government schemes with their official sources. Amounts and limits were checked against official guidelines and current reporting in November 2026; live research (Gemini) re-checks every claim. The agent's 'sandbox_scholarship' playbook targets FactVerify's practice copy of the scholarship form (/portal), never a real government site.",
   "schemes": [
     {
-      "id": "sch_postmatric_merit",
-      "name": "Post-Matric Merit Scholarship",
+      "id": "sch_csss",
+      "name": "Central Sector Scheme of Scholarship (PM-USP CSSS)",
       "aliases": [
-        "post matric scholarship",
-        "merit scholarship",
-        "post-matric scholarship",
-        "pm merit scholarship",
-        "पोस्ट मैट्रिक",
-        "मेरिट छात्रवृत्ति",
-        "போஸ்ட் மெட்ரிக்",
-        "மெரிட் உதவித்தொகை",
-        "పోస్ట్ మెట్రిక్"
+        "central sector scholarship",
+        "central sector scheme of scholarship",
+        "csss",
+        "pm-usp",
+        "pm usp",
+        "uchchatar shiksha protsahan",
+        "केंद्रीय क्षेत्र छात्रवृत्ति",
+        "केन्द्रीय क्षेत्र छात्रवृत्ति",
+        "மத்திய துறை உதவித்தொகை",
+        "కేంద్ర రంగ స్కాలర్‌షిప్"
       ],
-      "summary": "Annual scholarship for students in Class 11 to postgraduate courses from families with annual income up to Rs 2,50,000. Applications are free and made only through the official portal.",
+      "summary": "Central government merit scholarship for regular college and university students who scored above the 80th percentile in Class 12, with family income up to Rs 4.5 lakh a year. Rs 12,000 per year for the first three years of undergraduate study and Rs 20,000 per year at postgraduate level (or the 4th/5th year of professional courses), paid by direct benefit transfer. Applications are free and made only on the National Scholarship Portal.",
       "benefit_amount": 12000,
-      "benefit_period": "per year",
+      "benefit_alt_amounts": [
+        20000
+      ],
+      "benefit_period": "per year (UG years 1-3; Rs 20,000 for PG / 4th-5th year)",
       "application_fee": 0,
-      "income_limit": 250000,
-      "deadline": "2026-12-15",
+      "income_limit": 450000,
+      "deadline": null,
       "eligibility": [
-        "Enrolled in Class 11 to postgraduate",
-        "Family income up to Rs 2,50,000 per year",
-        "Minimum 50% marks in last exam"
+        "Above the 80th percentile in the Class 12 board exam",
+        "Regular full-time UG or PG course at a recognised institution",
+        "Family income up to Rs 4.5 lakh per year",
+        "Not receiving another scholarship for the same period"
       ],
       "official_domains": [
-        "scholarships.gov.in",
-        "127.0.0.1",
-        "localhost"
+        "scholarships.gov.in"
       ],
-      "official_url": "/portal/",
+      "official_url": "https://scholarships.gov.in",
       "playbook": "sandbox_scholarship",
-      "source": "Sample entry (replace with official notification)"
-    },
-    {
-      "id": "sch_girl_higher_ed",
-      "name": "Girl Child Higher Education Grant",
-      "aliases": [
-        "girl child grant",
-        "girl student scholarship",
-        "higher education grant for girls",
-        "बालिका उच्च शिक्षा",
-        "பெண் குழந்தை உயர்கல்வி"
-      ],
-      "summary": "One-time grant of Rs 25,000 for girl students entering an undergraduate degree, family income up to Rs 8,00,000. No application fee.",
-      "benefit_amount": 25000,
-      "benefit_period": "one-time",
-      "application_fee": 0,
-      "income_limit": 800000,
-      "deadline": "2027-01-31",
-      "eligibility": [
-        "Female student",
-        "First year of an undergraduate degree",
-        "Family income up to Rs 8,00,000 per year"
-      ],
-      "official_domains": [
-        "scholarships.gov.in",
-        "127.0.0.1",
-        "localhost"
-      ],
-      "official_url": "/portal/",
-      "playbook": "sandbox_scholarship",
-      "source": "Sample entry (replace with official notification)"
-    },
-    {
-      "id": "sch_senior_pension",
-      "name": "Senior Citizen Pension Top-up",
-      "aliases": [
-        "old age pension",
-        "senior pension",
-        "pension top up",
-        "वृद्धावस्था पेंशन",
-        "முதியோர் ஓய்வூதியம்"
-      ],
-      "summary": "Monthly pension top-up of Rs 1,500 for citizens aged 60 and above with family income below Rs 1,00,000. Free to apply at the official portal or a government service centre.",
-      "benefit_amount": 1500,
-      "benefit_period": "per month",
-      "application_fee": 0,
-      "income_limit": 100000,
-      "deadline": "2027-03-31",
-      "eligibility": [
-        "Aged 60 or above",
-        "Family income below Rs 1,00,000 per year"
-      ],
-      "official_domains": [
-        "nsap.nic.in",
-        "127.0.0.1",
-        "localhost"
-      ],
-      "official_url": "/portal/",
-      "playbook": "sandbox_scholarship",
-      "source": "Sample entry (replace with official notification)"
+      "source": "PM-USP CSSS guidelines, Department of Higher Education (Ministry of Education); National Scholarship Portal"
     },
     {
       "id": "sch_pm_kisan",

@@ -1,6 +1,7 @@
 """Claim verification: match a claim to the trusted scheme registry, check its facts, detect scam patterns."""
 import json
 import re
+import unicodedata
 from datetime import date, datetime
 from functools import lru_cache
 from typing import Optional
@@ -42,7 +43,7 @@ def tokens(text: str) -> set[str]:
 _AMOUNT_RE = re.compile(
     r"(?:(?:rs\.?|₹|inr)\s*([\d,]+(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|k(?![a-z]))?)|(?:([\d,]+(?:\.\d+)?)\s*(lakhs?|lacs?|crores?)?\s*(?:rupees|rs\b|inr))",
     re.IGNORECASE)
-_FEE_WORDS = r"fee|charge|pay|deposit|transfer|send|processing|registration|शुल्क|फीस|पंजीकरण|भुगतान|கட்டணம்|రుసుము|ಶುಲ್ಕ|ഫീസ്"
+_FEE_WORDS = r"fee|charge|pay|deposit|transfer|send|processing|registration|bhejo|jama|जमा|भेजें|शुल्क|फीस|पंजीकरण|भुगतान|கட்டணம்|రుసుము|ಶುಲ್ಕ|ഫീസ്"
 _FEE_CONTEXT = re.compile(_FEE_WORDS, re.IGNORECASE)
 _INCOME_CONTEXT = re.compile(r"income|earning|salary", re.IGNORECASE)
 _FREE_RE = re.compile(r"\b(free of cost|no (application )?fee|free to apply|apply (for )?free|without any fee|zero fee|fee[- ]free)\b",
@@ -61,6 +62,30 @@ def _to_number(num: str, unit: Optional[str]) -> float:
     return value
 
 
+_HOMOGLYPHS = str.maketrans("аеорсхуіјАВЕКМНОРСТХіο", "aeopcxyijABEKMHOPCTXio")
+_OTP_DISGUISE = re.compile(r"\b[o0][\W_]{0,2}t[\W_]{0,2}p\b", re.IGNORECASE)
+
+
+def normalize(text: str) -> str:
+    """Undo common disguises before the rules run: full-width/odd Unicode forms, look-alike Cyrillic/Greek letters,
+    Indian-script digits, and spaced or dotted 'o.t.p' / '0TP'."""
+    t = unicodedata.normalize("NFKC", text or "").translate(_HOMOGLYPHS)
+    t = "".join(str(unicodedata.digit(c)) if c.isdigit() and not c.isascii() else c for c in t)
+    t = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]", "", t)          # zero-width / direction marks
+    return _OTP_DISGUISE.sub("otp", t)
+
+
+# A warning ("never share your OTP", "fraudsters ask for a fee") is not a request.
+_NEGATION = re.compile(r"\b(never|do not|don't|dont|no one|nobody|not to|beware|fraudsters?|scammers?|fake|will not|won't|"
+                       r"does not|doesn't|is not|isn't)\b|मत|ना करें|न करें|कभी नहीं|धोखेबाज", re.IGNORECASE)
+_CLAUSE_BREAK = re.compile(r"[,.;:!?\n।]")
+
+
+def _negated(text: str, start: int) -> bool:
+    clause_start = max((m.end() for m in _CLAUSE_BREAK.finditer(text, 0, start)), default=0)
+    return bool(_NEGATION.search(text[clause_start:start]))
+
+
 def extract_amounts(text: str) -> list[dict]:
     out = []
     for m in _AMOUNT_RE.finditer(text):
@@ -72,8 +97,10 @@ def extract_amounts(text: str) -> list[dict]:
         kind = "benefit"
         if _INCOME_CONTEXT.search(before):
             kind = "income_limit"
-        elif _FEE_CONTEXT.search(before) or re.match(r"\s*(fee|charge|पंजीकरण|शुल्क|फीस|கட்டணம்|రుసుము|ಶುಲ್ಕ)", after, re.IGNORECASE):
+        elif _FEE_CONTEXT.search(before) or re.match(r"\s*(fee|charge|bhejo|bhejiye|jama|जमा|भेज|पंजीकरण|शुल्क|फीस|கட்டணம்|రుసుము|ಶುಲ್ಕ)", after, re.IGNORECASE):
             kind = "fee"
+        if kind == "fee" and _negated(text, m.start()):
+            kind = "fee_warning"                         # "do not pay Rs 500 to anyone"
         out.append({"value": _to_number(num, unit), "kind": kind, "text": m.group(0).strip()})
     return out
 
@@ -107,7 +134,10 @@ def extract_urls(text: str) -> list[str]:
 def domain_trust(url: str) -> dict:
     if not re.match(r"https?://", url):
         url = "http://" + url
-    host = (urlparse(url).hostname or "").lower()
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:                                  # e.g. "http://x.com[]" (broken IPv6 brackets)
+        return {"host": url[:80], "trust": "low", "score": 0.1}
     td = trusted_domains()
     if host in td["trusted_exact"] or any(host == s or host.endswith("." + s) for s in td["trusted_suffixes"]):
         return {"host": host, "trust": "official", "score": 1.0}
@@ -199,11 +229,15 @@ def check_facts(text: str, scheme: dict) -> tuple[list[dict], list[dict]]:
 
 
 def detect_scam_patterns(text: str) -> list[dict]:
+    text = normalize(text)
     hits = []
     for p in scam_patterns():
-        m = p["_re"].search(text)
-        if m:
+        for m in p["_re"].finditer(text):
+            if p["id"] in ("otp_request", "upfront_fee", "personal_payment", "sensitive_documents") \
+                    and _negated(text, m.start()):
+                continue
             hits.append({"id": p["id"], "label": p["label"], "weight": p["weight"], "evidence": m.group(0)})
+            break
     return hits
 
 
@@ -212,8 +246,9 @@ def analyze_claim(text: str, source_url: Optional[str] = None) -> dict:
     if not text:
         return {"present": False, "score": None}
 
-    scheme, match_score = match_scheme(text)
-    confirmations, contradictions = check_facts(text, scheme) if scheme else ([], [])
+    norm = normalize(text)
+    scheme, match_score = match_scheme(norm)
+    confirmations, contradictions = check_facts(norm, scheme) if scheme else ([], [])
     scam_hits = detect_scam_patterns(text)
     sources = [domain_trust(u) for u in ([source_url] if source_url else []) + extract_urls(text)]
     for src in sources:

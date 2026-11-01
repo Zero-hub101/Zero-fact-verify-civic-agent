@@ -266,7 +266,7 @@ def _local_edit_events(frames: list[np.ndarray]) -> list[dict]:
         med = float(np.median(r))
         mad = float(np.median(np.abs(r - med))) * 1.4826 + 1e-3
         z = (r - med) / mad
-        regs = [x for x in _regions(z > 15, z, b.shape[1], b.shape[0], block=8, min_blocks=3) if x["area"] < 0.4]
+        regs = [x for x in _regions(z > 12, z, b.shape[1], b.shape[0], block=8, min_blocks=3) if x["area"] < 0.4]
         if regs:
             events.append({"frame": i, "strength": regs[0]["strength"], "regions": regs[:4],
                            "heat": np.clip((z - 6) / 24, 0, 1), "global_change": med})
@@ -275,7 +275,7 @@ def _local_edit_events(frames: list[np.ndarray]) -> list[dict]:
 
 def analyze_video(path: Path, max_frames: int = 16) -> dict:
     if not ffmpeg_available():
-        return {"kind": "video", "error": "ffmpeg is not installed; video forensics skipped.", "tamper_score": None,
+        return {"kind": "video", "error": "Video checks are not available on this server right now, so only the text and links were checked.", "tamper_score": None,
                 "findings": ["Install ffmpeg to enable video forensics"], "frames": []}
     info = _probe(path)
     dur = max(info["duration"], 0.1)
@@ -299,7 +299,7 @@ def analyze_video(path: Path, max_frames: int = 16) -> dict:
     events = _local_edit_events(small)
     for ev in events:
         fr = results[ev["frame"]]
-        score = min(1.0, 0.6 + 0.3 * min(1.0, (ev["strength"] - 15) / 30))
+        score = min(1.0, 0.6 + 0.3 * min(1.0, (ev["strength"] - 12) / 30))
         fr["score"] = max(fr["score"], round(score, 3))
         fr["flagged"] = True
         fr["regions"] = [{k: v for k, v in r.items() if k != "area"} for r in ev["regions"]]

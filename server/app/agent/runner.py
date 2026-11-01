@@ -173,7 +173,10 @@ def _screenshot(task: dict, page, label: str) -> Optional[str]:
 
 
 def _check_host(pb: dict, url: str) -> None:
-    host = urlparse(url).hostname
+    try:
+        host = urlparse(url).hostname
+    except ValueError:
+        raise Cancelled("Navigation to a malformed address blocked")      # fail closed
     if host and host not in pb.get("allowed_hosts", []):
         raise Cancelled(f"Navigation to unapproved host '{host}' blocked")
 
@@ -414,6 +417,9 @@ def _run(task: dict) -> None:
 
 
 def _check_nav(task: dict, pb: dict, url: str) -> None:
-    host = urlparse(url).hostname
+    try:
+        host = urlparse(url).hostname
+    except ValueError:
+        host = "(malformed address)"
     if url.startswith("http") and host and host not in pb.get("allowed_hosts", []):
         _log(task, f"Warning: portal navigated to unapproved host {host}", "error")

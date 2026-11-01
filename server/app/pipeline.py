@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from . import config
-from .ai import cache, router
+from .ai import cache, router, sanitize
 from .forensics import language, media, sources, text
 
 log = logging.getLogger("factverify.pipeline")
@@ -119,7 +119,7 @@ def run(inputs: dict) -> dict:
             if isinstance(result, dict) and result.get("error"):
                 warnings.append(result["error"])
                 return None
-        return result
+        return sanitize.clean(role, result)
 
     def translate(texts: dict, target: str):
         """Translation role, remembered per text so repeat runs (and the spoken reply built from it) are stable."""
@@ -132,7 +132,7 @@ def run(inputs: dict) -> dict:
                              "specialist": "translation" in tp.specialist_roles, "seconds": 0, "note": "cached"})
             return hit
         out = use("translation", lambda p: p.translate(texts, target))
-        if isinstance(out, dict) and out:
+        if out:
             cache.put("translation", ck, out)
         return out
 
@@ -363,7 +363,8 @@ def speak(text_: str, lang: str) -> dict:
         audio, credit = router.call("voice", lambda p: p.speak(text_, lang))
         if isinstance(audio, dict) and audio.get("error"):
             return {"error": audio["error"]}
-        if not (audio and isinstance(audio, tuple)):
+        audio = sanitize.clean("voice", audio)
+        if not audio:
             return {"error": "The voice service returned no audio."}
         cache.put_bytes("voice", vkey, audio[0], audio[1])
     name = f"voice_{vkey[:16]}.{audio[1]}"

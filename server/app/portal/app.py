@@ -37,9 +37,9 @@ td{border:1px solid #ccc;padding:6px}.steps{color:#666;font-size:12px}.code{font
 
 
 def page(title: str, body: str, step: str = "") -> HTMLResponse:
-    return HTMLResponse(f"""<!doctype html><html><head><meta charset="utf-8"><title>{title} - Scholarship Portal (Sandbox)</title>
-<style>{STYLE}</style></head><body><div class="top"><h1>Scholarship Application Portal</h1>
-<small>SANDBOX for FactVerify demos - not a government website</small></div>
+    return HTMLResponse(f"""<!doctype html><html><head><meta charset="utf-8"><title>{title} - Practice Scholarship Form (Sandbox)</title>
+<style>{STYLE}</style></head><body><div class="top"><h1>Practice Scholarship Application Form</h1>
+<small>FactVerify sandbox: a practice copy of the form, used so the AI agent can be shown safely. Not a government website; nothing is sent to any real portal. Real applications: scholarships.gov.in</small></div>
 <div class="wrap"><div class="steps">{step}</div><h2>{title}</h2>{body}</div></body></html>""")
 
 
@@ -53,8 +53,8 @@ def _esc(v) -> str:
 
 
 async def home(request: Request):
-    return page("Welcome", """<p>Apply for the <b>Post-Matric Merit Scholarship 2026-27</b>.</p>
-<div class="note">There is <b>no application fee</b>. Last date: 15 December 2026.</div>
+    return page("Welcome", """<p>Practice application for the <b>Central Sector Scheme of Scholarship (PM-USP CSSS) 2026-27</b>.</p>
+<div class="note">The real scheme has <b>no application fee</b> and is applied for only on the National Scholarship Portal (scholarships.gov.in).</div>
 <p><a id="start-application" href="login">Start a new application</a></p>""")
 
 
@@ -93,8 +93,8 @@ async def apply(request: Request):
             errors.append("Select your state.")
         if not data["income"].replace(",", "").isdigit():
             errors.append("Annual family income must be a number.")
-        elif int(data["income"].replace(",", "")) > 250000:
-            errors.append("Family income exceeds the Rs 2,50,000 limit for this scholarship.")
+        elif int(data["income"].replace(",", "")) > 450000:
+            errors.append("Family income exceeds the Rs 4.5 lakh limit for this scholarship.")
         if not data["course"] or not data["institution"]:
             errors.append("Course and institution are required.")
         if not re.fullmatch(r"\d{4}", data["id_last4"]):
@@ -195,7 +195,7 @@ async def receipt_pdf(request: Request):
     c.setFont("Helvetica-Bold", 16)
     c.drawString(60, 790, "Scholarship Application Portal (Sandbox)")
     c.setFont("Helvetica", 11)
-    c.drawString(60, 770, "Acknowledgement of application - Post-Matric Merit Scholarship 2026-27")
+    c.drawString(60, 770, "Practice acknowledgement (FactVerify sandbox) - Central Sector Scholarship 2026-27")
     c.setFont("Helvetica-Bold", 22)
     c.drawString(60, 730, f"Application number: {code}")
     c.setFont("Helvetica", 11)

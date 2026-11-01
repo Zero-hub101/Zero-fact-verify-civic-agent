@@ -1,6 +1,6 @@
 {
   "id": "sandbox_scholarship",
-  "name": "Scholarship Application Portal (Sandbox)",
+  "name": "Practice scholarship form (FactVerify sandbox)",
   "description": "Logs in, fills the application, hands the CAPTCHA to the citizen, asks for approval before final submit, then captures the application number and PDF acknowledgement.",
   "base_url": "{PUBLIC_BASE_URL}/portal",
   "allowed_hosts": ["127.0.0.1", "localhost"],

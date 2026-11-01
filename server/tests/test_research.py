@@ -15,7 +15,7 @@ HINDI = ("जरूरी सूचना!! पोस्ट मैट्रि�
 
 ANSWER = {
     "claim_language": "hi",
-    "claim_en": "Urgent! Post-Matric Merit Scholarship gives Rs 50,000 to all students. Send Rs 499 registration "
+    "claim_en": "Urgent! Central Sector Scholarship gives Rs 50,000 to all students. Send Rs 499 registration "
                 "fee to UPI 9876543210@ybl within 24 hours and share the OTP on WhatsApp.",
     "verdict": "fraudulent", "authenticity": 0.04, "already_debunked": True,
     "findings": [
@@ -110,7 +110,7 @@ def test_pipeline_uses_translation_and_research(gemini):
     roles = {c["role"]: c for c in res["ai_team"]}
     assert roles["research"]["provider"] == "gemini" and roles["research"]["specialist"]
     assert roles["translation"]["note"] == "combined with research"
-    assert res["matched_scheme"]["id"] == "sch_postmatric_merit"
+    assert res["matched_scheme"]["id"] == "sch_csss"
     assert res["verdict"] == "likely_fraudulent" and res["agentAllowed"] is False
     assert any(c["field"] == "application_fee" for c in res["text"]["contradictions"])
 

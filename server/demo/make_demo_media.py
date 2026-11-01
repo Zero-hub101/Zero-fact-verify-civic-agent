@@ -43,17 +43,19 @@ def draw_notice(img: Image.Image) -> None:
     d = ImageDraw.Draw(img)
     d.rectangle([60, 50, W - 60, 150], fill=(20, 60, 120))
     d.text((90, 72), "DEPARTMENT OF HIGHER EDUCATION", font=font(40, True), fill="white")
-    d.text((90, 185), "Post-Matric Merit Scholarship 2026-27", font=font(44, True), fill=(20, 30, 60))
+    d.text((90, 185), "Central Sector Scheme of Scholarship 2026-27", font=font(38, True), fill=(20, 30, 60))
     lines = [
-        "Scholarship: Rs 12,000 per year for eligible students.",
-        "Family income limit: Rs 2,50,000 per year.",
-        "Application fee: NONE. Apply free on the official portal only.",
-        "Last date to apply: 15 December 2026.",
+        "Scholarship: Rs 12,000 per year (UG, years 1-3).",
+        "Family income limit: Rs 4.5 lakh per year.",
+        "Application fee: NONE. Apply free on scholarships.gov.in only.",
+        "Eligibility: above 80th percentile in Class 12.",
         "Never share your OTP or bank PIN with anyone.",
     ]
     for i, line in enumerate(lines):
         d.text((90, 280 + i * 70), line, font=font(32), fill=(25, 25, 25))
-    d.text((90, 690), "Issued by the Scholarship Cell  |  scholarships.gov.in", font=font(26), fill=(70, 70, 90))
+    d.text((90, 690), "National Scholarship Portal  |  scholarships.gov.in", font=font(26), fill=(70, 70, 90))
+    d.text((90, 735), "Sample notice made for testing FactVerify (facts from the official scheme guidelines)",
+           font=font(20), fill=(120, 120, 130))
 
 
 def fake_patch() -> Image.Image:

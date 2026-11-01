@@ -10,8 +10,8 @@ import time
 import pytest
 import requests
 
-GENUINE = ("Post-Matric Merit Scholarship 2026-27: Rs 12,000 per year for students with family income up to "
-           "Rs 2,50,000. Apply free on the official portal before 15 December 2026.")
+GENUINE = ("Central Sector Scheme of Scholarship 2026-27: Rs 12,000 per year for undergraduate students above the 80th "
+           "percentile in Class 12 with family income up to Rs 4.5 lakh. Apply free on the National Scholarship Portal, scholarships.gov.in.")
 FRAUD = ("URGENT!! PM Merit Scholarship of Rs 50,000 for ALL students. Pay Rs 499 registration fee to UPI "
          "9876543210@ybl and share the OTP on WhatsApp within 24 hours. No documents needed. Forward to 10 groups!")
 PROFILE = {"full_name": "Asha Kumar", "dob": "2005-04-12", "email": "asha@example.com", "phone": "9876543210",
@@ -185,6 +185,7 @@ def test_spoken_summary_handles_every_verdict():
 def test_ai_cache_round_trip(tmp_path, monkeypatch):
     from app.ai import cache
     monkeypatch.setattr(cache, "DIR", tmp_path)
+    monkeypatch.setenv("AI_CACHE_HOURS", "24")
     k = cache.key("x", {"a": 1})
     assert cache.get("t", k) is None
     cache.put("t", k, {"v": 2})
@@ -211,7 +212,7 @@ def test_lookalike_government_links():
         assert text.domain_trust(host)["trust"] == "lookalike", host
     for host in ("pmkisan.gov.in", "scholarships.gov.in", "www.google.com"):
         assert text.domain_trust(host)["trust"] != "lookalike", host
-    r = text.analyze_claim("Apply for Post Matric Scholarship here", "http://scholarship-gov-in.help/apply")
+    r = text.analyze_claim("Apply for Central Sector Scholarship here", "http://scholarship-gov-in.help/apply")
     assert r["score"] < 0.3 and any(f["id"] == "lookalike_domain" for f in r["scam_flags"])
     import socket
     msg = sources._friendly_fetch_error(socket.gaierror(11001, "getaddrinfo failed"), "x.help")

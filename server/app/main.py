@@ -29,6 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("factverify")
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp"}
+MAX_IMAGE_PIXELS = 40_000_000
 VIDEO_EXT = {".mp4", ".mov", ".webm", ".m4v"}
 DEMO_DIR = config.BASE_DIR / "demo"
 REPLY_LANGS = {"auto", "en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa", "or", "ur"}
@@ -157,8 +158,11 @@ def _validate_media(path: Path, kind: str) -> None:
         try:
             with Image.open(path) as im:
                 im.verify()
+                too_big = im.width * im.height > MAX_IMAGE_PIXELS
         except Exception:
             raise HTTPException(400, "File is not a readable image.")
+        if too_big:
+            raise HTTPException(413, "Image is too large (over 40 megapixels). Please send a smaller photo or a screenshot.")
     elif shutil.which("ffprobe"):
         out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0",
                               str(path)], capture_output=True, text=True, timeout=30)
@@ -236,6 +240,8 @@ async def ingest(text: str = Form(""), url: str = Form(""), transcript: str = Fo
 @app.post("/api/voice", dependencies=auth)
 def voice(req: SpeakRequest):
     """Spoken verdict, made on demand when the citizen presses Listen."""
+    if not req.text.strip():
+        raise HTTPException(400, "Nothing to read.")
     out = pipeline.speak(req.text, req.lang)
     if out.get("error"):
         raise HTTPException(503, out["error"])
@@ -382,21 +388,9 @@ def verify_receipts():
 
 
 DEMO_SCENARIOS = {
-    "genuine": {
-        "text": "Post-Matric Merit Scholarship 2026-27: Rs 12,000 per year for students with family income up to "
-                "Rs 2,50,000. Apply free on the official portal before 15 December 2026.",
-        "file": "genuine_notice.mp4",
-    },
-    "fraud": {
-        "text": "URGENT!! PM Merit Scholarship of Rs 50,000 for ALL students. Pay Rs 499 registration fee to UPI "
-                "9876543210@ybl and share the OTP on WhatsApp within 24 hours. No documents needed. Forward to 10 groups!",
-        "file": "tampered_notice.mp4",
-    },
-    "fraud_hindi": {
-        "text": "जरूरी सूचना!! पोस्ट मैट्रिक मेरिट छात्रवृत्ति में सभी छात्रों को ₹50,000 मिलेंगे। 24 घंटे में ₹499 "
-                "पंजीकरण शुल्क UPI 9876543210@ybl पर भेजें और OTP व्हाट्सएप पर शेयर करें। कोई दस्तावेज़ नहीं चाहिए!",
-        "file": "tampered_notice.mp4",
-    },
+    "genuine": {"text": "Central Sector Scheme of Scholarship 2026-27: Rs 12,000 per year for undergraduate students above the 80th percentile in Class 12 with family income up to Rs 4.5 lakh. Apply free on the National Scholarship Portal, scholarships.gov.in.", "file": "genuine_notice.mp4"},
+    "fraud": {"text": "URGENT!! Central Sector Scholarship of Rs 50,000 for ALL students. Pay Rs 499 registration fee to UPI 9876543210@ybl and share the OTP on WhatsApp within 24 hours. No documents needed. Forward to 10 groups!", "file": "tampered_notice.mp4"},
+    "fraud_hindi": {"text": "जरूरी सूचना!! केंद्रीय क्षेत्र छात्रवृत्ति योजना में सभी छात्रों को ₹50,000 मिलेंगे। 24 घंटे में ₹499 पंजीकरण शुल्क UPI 9876543210@ybl पर भेजें और OTP व्हाट्सएप पर शेयर करें। कोई दस्तावेज़ नहीं चाहिए!", "file": "tampered_notice.mp4"},
 }
 
 

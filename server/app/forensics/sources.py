@@ -45,7 +45,11 @@ def fetch_url_text(url: str, allow_local: bool = True, max_bytes: int = 1_000_00
     """Download a page and return its title and visible text. Never raises; errors are reported."""
     if not config.ALLOW_URL_FETCH:
         return {"ok": False, "error": "URL fetching disabled (ALLOW_URL_FETCH=false)"}
-    parsed = urlparse(url if re.match(r"https?://", url) else "https://" + url)
+    try:
+        parsed = urlparse(url if re.match(r"https?://", url) else "https://" + url)
+        parsed.hostname                                  # raises on malformed brackets
+    except ValueError:
+        return {"ok": False, "error": "The link is malformed, so it could not be checked."}
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         return {"ok": False, "error": "Only http(s) URLs are supported"}
     if not allow_local and _is_private(parsed.hostname):

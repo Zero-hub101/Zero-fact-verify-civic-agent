@@ -3,20 +3,20 @@
     {
       "id": "upfront_fee",
       "label": "Asks for a fee to receive a free government benefit",
-      "weight": 0.35,
-      "regex": "(pay|deposit|transfer|send)\\b[^.]{0,40}?(fee|charge|amount|rs\\.?|₹|inr|rupees)|(processing|registration|activation|verification)\\s+(fee|charge)|शुल्क|फीस|भुगतान करें|पैसे भेज|கட்டணம்|பணம் அனுப்ப|రుసుము|ಶುಲ್ಕ|ഫീസ്|ফি দিন"
+      "weight": 0.45,
+      "regex": "(pay|deposit|transfer|send)\\b[^.]{0,40}?(fee|charge|amount|rs\\.?|₹|inr|rupees)|(processing|registration|activation|verification)\\s+(fee|charge)|शुल्क|फीस|भुगतान करें|पैसे भेज|கட்டணம்|பணம் அனுப்ப|రుసుము|ಶುಲ್ಕ|ഫീസ്|ফি দিন|\\b(fee|charges?|amount)\\s*[:=\\-]\\s*(rs\\.?|₹|inr)?\\s*\\d{2,6}\\b|\\b\\d{2,6}\\s*(rs|rupa?ye|rupees|rupay)?\\s*(bhejo|bhejiye|bhejein|bhej do|jama karo|jama karein|jama kare|pay karo|transfer karo)\\b|जमा करें|जमा करो|जमा कीजिए|पैसे जमा|रुपये भेजें|भेजें ₹|₹\\s*\\d+\\s*भेजें"
     },
     {
       "id": "otp_request",
       "label": "Requests an OTP, PIN or password",
-      "weight": 0.35,
-      "regex": "\\b(otp|one[- ]time password|upi pin|atm pin|cvv|password)\\b|ओटीपी|ओ\\.टी\\.पी|पिन बताएं|ஓடிபி|ఓటీపీ|ಒಟಿಪಿ|ഒടിപി"
+      "weight": 0.5,
+      "regex": "\\b(otp|one[- ]time password|upi pin|atm pin|cvv|password)\\b|ओटीपी|ओ\\.टी\\.पी|पिन बताएं|ஓடிபி|ఓటీపీ|ಒಟಿಪಿ|ഒടിപി|\\b(\\d|six|4|four)[- ]?digit (code|pin|number)\\b|\\b(verification|security|secret|activation) code\\b|\\b(bank|atm|debit card|card) (pin|password)\\b|\\bm-?pin\\b|\\bnet ?banking (password|id)\\b"
     },
     {
       "id": "personal_payment",
       "label": "Payment to a personal UPI ID or phone number",
       "weight": 0.3,
-      "regex": "(upi|gpay|phonepe|paytm)\\b[^.]{0,40}?(@|\\d{10})|\\b[\\w.-]+@(okaxis|oksbi|okicici|ybl|paytm|upi)\\b"
+      "regex": "(upi|g-?pay|google pay|phone ?pe|paytm|bhim)\\b[^.]{0,40}?(@|\\d{5}\\s?\\d{5})|\\b[\\w.-]+@(okaxis|oksbi|okicici|okhdfcbank|ybl|ibl|axl|paytm|upi|apl)\\b"
     },
     {
       "id": "messaging_channel",
@@ -47,6 +47,12 @@
       "label": "Uses a shortened or disguised link",
       "weight": 0.15,
       "regex": "\\b(bit\\.ly|tinyurl\\.com|goo\\.gl|cutt\\.ly|rb\\.gy)/"
+    },
+    {
+      "id": "sensitive_documents",
+      "label": "Asks you to send identity or bank documents through chat",
+      "weight": 0.3,
+      "regex": "(aadhaa?r|pan card|passbook|bank (details|pin|password)|bank account number)[^.]{0,40}?(whatsapp|telegram|send|share|photo|upload)|(whatsapp|telegram|send|share)[^.]{0,40}?(aadhaa?r|pan card|passbook|bank (details|pin|password))|आधार[^.]{0,30}(भेजें|व्हाट्सएप)"
     }
   ]
 }

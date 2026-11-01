@@ -243,18 +243,20 @@ function Research({ r }) {
   if (!rs) {
     return (
       <div className="card research off">
-        <h3>Live web research</h3>
+        <h3>AI research</h3>
         <p className="muted small">No research model is active. Add <code>GEMINI_API_KEY</code> to <code>.env</code> to research every claim on the
           live web with Google Search, with a source link for each finding.</p>
       </div>
     );
   }
-  if (rs.error) return <div className="card research"><h3>Live web research</h3><p className="warn-text">{rs.error}</p></div>;
+  if (rs.error) return <div className="card research"><h3>AI research</h3><p className="warn-text">{rs.error}</p></div>;
   const local = rs.localized && rs.localized.lang !== "en" ? rs.localized : null;
   return (
     <div className="card research">
       <div className="card-head">
-        <h3>Live web research <span className="muted small">· every finding linked to its source</span></h3>
+        <h3>AI research {rs.grounded
+          ? <span className="muted small">· live web search, every finding linked to its source</span>
+          : <span className="muted small">· AI reasoning without live web sources</span>}</h3>
         <div>
           <span className="pill subtle">{rs.language.native} detected</span>
           <span className="pill subtle" title={rs.api}>research: {rs.model} · {rs.seconds}s</span>
@@ -389,7 +391,7 @@ export default function Results({ data, onLaunch, launching }) {
                   {(r.matched_scheme.official_url || r.matched_scheme.official_domains[0]).replace(/^https?:\/\//, "")}</a></p>
             ) : r.agentAllowed ? (
               <button className="primary big" disabled={launching || !r.has_profile} onClick={onLaunch}>
-                {launching ? "Starting agent…" : "2 · Apply on the official portal with the agent"}
+                {launching ? "Starting agent…" : "2 · Let the agent fill the application (practice portal)"}
               </button>
             ) : (
               <div className="locked">
