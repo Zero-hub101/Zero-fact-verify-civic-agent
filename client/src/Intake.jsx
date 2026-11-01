@@ -30,20 +30,33 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
   const [stage, setStage] = useState("");
   const [replyLang, setReplyLang] = useState("auto");
 
+  // Enable the button only for something worth checking (8+ letters/digits, a link, a transcript or a file).
+  const ready = files.length > 0 || url.trim() || transcript.trim() ||
+    [...text].filter((c) => /[\p{L}\p{N}]/u.test(c)).length >= 8;
   const addFiles = (list) => setFiles((f) => [...f, ...Array.from(list)].slice(0, 5));
 
   async function verify(ingestPromise) {
     setBusy(true);
     setError("");
+    // Progress messages so a slow check never looks stuck (the free server can take ~50 s to wake up).
+    const steps = [
+      [0, "Reading your message…"],
+      [3000, "Checking it against official scheme rules and scam warning signs…"],
+      [8000, "AI research and photo/video checks are running. This usually takes 10–30 seconds…"],
+      [25000, "Still working. The free server may be waking up; this can take up to a minute the first time."],
+      [60000, "Taking longer than usual. Please keep this page open; your result will appear here."],
+    ];
+    const timers = steps.map(([ms, msg]) => setTimeout(() => setStage(msg), ms));
     try {
-      setStage("Uploading and mapping inputs…");
       const ing = await ingestPromise;
-      setStage("Researching the claim on the web, checking facts and running media forensics…");
       const result = await api.forensics(ing.audit_id);
       onVerified({ ingest: ing, result });
     } catch (e) {
-      setError(e.message);
+      setError(e.message === "Failed to fetch"
+        ? "Could not reach the server. Please check your internet connection and try again."
+        : e.message);
     } finally {
+      timers.forEach(clearTimeout);
       setBusy(false);
       setStage("");
     }
@@ -81,6 +94,8 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
         <p><b>Got a message about a government scheme, scholarship or benefit?</b> Paste it here (any Indian language,
           or a photo or video of it). In a few seconds we tell you, in simple words, whether it is real or a scam and what to do.</p>
         <p className="muted small">If it is real, an AI helper can fill the application form for you; it always stops and asks you before submitting.</p>
+        <p className="small"><b>New here? Try it in 60 seconds:</b> click <b>💬 Hindi WhatsApp scam</b> below, read the answer and press Listen;
+          then click <b>✅ Real scholarship notice</b> and let the helper fill the practice form.</p>
       </div>
       <div className="card-head">
         <h2>1 · What did you receive?</h2>
@@ -148,7 +163,9 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
       )}
 
       <div className="actions">
-        <button className="primary" disabled={busy}>{busy ? "Verifying…" : "Verify claim"}</button>
+        <button className="primary" disabled={busy || !ready}
+          title={ready ? "" : "Paste the message you received, add a link, or upload a photo or video"}>
+          {busy ? "Checking…" : "Check this message"}</button>
         {stage && <span className="stage"><span className="spinner" /> {stage}</span>}
       </div>
     </form>

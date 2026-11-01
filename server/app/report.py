@@ -1,10 +1,16 @@
 """Provenance / audit report in Markdown."""
+import html
 import time
 from typing import Optional
 
 
 def _ts(t: float) -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+
+
+def _safe(v) -> str:
+    """User text in the report: escape HTML and Markdown link/image syntax so nothing renders as code or links."""
+    return html.escape(str(v or ""), quote=True).replace("[", "&#91;").replace("]", "&#93;").replace("`", "&#96;")
 
 
 def build(audit: dict, task: Optional[dict], receipt: Optional[dict]) -> str:
@@ -22,11 +28,11 @@ def build(audit: dict, task: Optional[dict], receipt: Optional[dict]) -> str:
     inputs = audit.get("inputs", {})
     lines += ["## Inputs", ""]
     if inputs.get("text"):
-        lines += ["Claim text:", "", "> " + inputs["text"].replace("\n", "\n> "), ""]
+        lines += ["Claim text:", "", "> " + _safe(inputs["text"]).replace("\n", "\n> "), ""]
     if inputs.get("url"):
-        lines.append(f"- URL: {inputs['url']}")
+        lines.append(f"- URL: `{_safe(inputs['url'])}`")
     for f in inputs.get("files", []):
-        lines.append(f"- File: {f['name']} ({f['kind']}, {f['size'] // 1024} KB, sha256 `{f['sha256'][:16]}…`)")
+        lines.append(f"- File: {_safe(f['name'])} ({f['kind']}, {f['size'] // 1024} KB, sha256 `{f['sha256'][:16]}…`)")
     lines.append("")
 
     s = r.get("matched_scheme")
@@ -72,7 +78,7 @@ def build(audit: dict, task: Optional[dict], receipt: Optional[dict]) -> str:
                   f"- Verdict: **{rs['verdict']}** (authenticity {rs['authenticity']})"
                   + (" · already debunked by fact-checkers" if rs.get("already_debunked") else ""), ""]
         if rs.get("claim_en") and rs["language"]["code"] != "en":
-            lines += ["English translation:", "", "> " + rs["claim_en"].replace("\n", "\n> "), ""]
+            lines += ["English translation:", "", "> " + _safe(rs["claim_en"]).replace("\n", "\n> "), ""]
         if rs.get("summary"):
             lines += [rs["summary"], ""]
         loc = rs.get("localized")

@@ -107,6 +107,8 @@ def run(inputs: dict) -> dict:
     files = inputs.get("files", [])
     url = inputs.get("url") or None
     warnings: list[str] = []
+    if inputs.get("truncated"):
+        warnings.append("Your message was very long, so only the first 4,000 characters were checked.")
 
     team: list[dict] = []                         # which model did which job in this run
     lock = threading.Lock()
@@ -220,7 +222,11 @@ def run(inputs: dict) -> dict:
 
     # ---- RESEARCH role (+ TRANSLATION in the same call when one model holds both roles: one round trip)
     found = None
-    if text_result.get("present"):
+    # Nothing civic about it (no scheme, no warning signs, no civic words, no media)? Skip the paid AI research and
+    # review: it saves time and credits, and the verdict stays a clean "off topic" instead of mixed AI opinions.
+    clearly_off = (not text_result.get("matched_scheme") and not text_result.get("scam_flags")
+                   and not text_result.get("contradictions") and not files and not CIVIC_WORDS.search(claim or ""))
+    if text_result.get("present") and not clearly_off:
         rp, tp = router.get("research"), router.get("translation")
         same = rp is not None and tp is not None and rp.id == tp.id
         found = use("research", lambda p: p.research(claim, text_result.get("matched_scheme"),
@@ -247,7 +253,8 @@ def run(inputs: dict) -> dict:
         found["localized"]["lang_name"] = language.name_for(found["localized"]["lang"])
 
     # ---- REVIEW role
-    ai = use("review", lambda p: p.review(claim, text_result.get("matched_scheme"))) if text_result.get("present") else None
+    ai = use("review", lambda p: p.review(claim, text_result.get("matched_scheme"))) \
+        if text_result.get("present") and not clearly_off else None
 
     rule_score = text_result.get("score")
     text_score = rule_score

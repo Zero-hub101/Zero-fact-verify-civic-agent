@@ -64,3 +64,23 @@ def test_unknown_ids_and_bad_bodies(server):
         r = getattr(requests, method)(f"{server}{path}", json=body, timeout=60)
         _no_5xx(r, f"{method} {path}")
         assert "API_KEY" not in r.text and "ENCRYPTION_KEY" not in r.text, f"secret leak via {path}"
+
+
+def test_junk_is_rejected_and_report_is_escaped(server):
+    for junk in ["   ", "​​", "a", "🙏🙏🙏", "!!!", "\x00\x01"]:
+        r = requests.post(f"{server}/api/audit/ingest", data={"text": junk}, timeout=30)
+        assert r.status_code == 400, (junk, r.status_code)
+    xss = "<script>alert(1)</script> PM Kisan pay Rs 499 fee [click](http://evil)"
+    a = requests.post(f"{server}/api/audit/ingest", data={"text": xss}, timeout=30).json()
+    requests.post(f"{server}/api/audit/forensics", json={"audit_id": a["audit_id"]}, timeout=60)
+    rep = requests.get(f"{server}/api/audit/{a['audit_id']}/report", timeout=30).text
+    assert "<script>" not in rep and "](http://evil)" not in rep
+    long = requests.post(f"{server}/api/audit/ingest", data={"text": "scholarship fee " * 2000}, timeout=30).json()
+    assert len(long["inputs"]["text"]) <= 4000 and long["inputs"]["truncated"]
+    assert requests.head(f"{server}/health", timeout=10).status_code == 200
+
+
+def test_off_topic_skips_ai_research_and_review(server):
+    a = requests.post(f"{server}/api/audit/ingest", data={"text": "Who won the cricket match yesterday?"}, timeout=30).json()
+    res = requests.post(f"{server}/api/audit/forensics", json={"audit_id": a["audit_id"]}, timeout=60).json()
+    assert res["verdict"] == "off_topic" and res["ai_review"] is None and res["research"] is None

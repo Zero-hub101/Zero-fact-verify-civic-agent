@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import re
+import os
 import shutil
 import subprocess
 import threading
@@ -12,7 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Request, Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -170,14 +171,52 @@ def _validate_media(path: Path, kind: str) -> None:
             raise HTTPException(400, "File is not a readable video.")
 
 
+MAX_CLAIM_CHARS = 4000
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2060\ufeff]")
+
+
+def _clean_text(t: str) -> str:
+    """Drop control and invisible characters; whitespace-only becomes empty."""
+    return _CONTROL.sub("", t or "").strip()
+
+
+def _meaningful(t: str) -> int:
+    """Letters and digits (any script); emoji, punctuation and spaces don't count."""
+    return sum(1 for c in t if c.isalnum())
+
+
+# ---- simple per-visitor rate limit (in memory; enough for one server)
+_HITS: dict[str, list[float]] = {}
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_10MIN", "40"))
+
+
+def rate_limit(request: Request) -> None:
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+    now = time.time()
+    hits = [t for t in _HITS.get(ip, []) if now - t < 600]
+    if len(hits) >= RATE_LIMIT:
+        raise HTTPException(429, "Too many checks from your connection in the last 10 minutes. Please wait a few minutes.")
+    hits.append(now)
+    _HITS[ip] = hits
+    if len(_HITS) > 5000:                                  # keep memory bounded
+        for k in list(_HITS)[:1000]:
+            _HITS.pop(k, None)
+
+
 def _ingest(text: str, url: str, transcript: str, profile: Optional[dict], files: list[dict],
             reply_language: str = "auto") -> dict:
-    if not (text.strip() or url.strip() or transcript.strip() or files):
-        raise HTTPException(400, "Provide claim text, a URL, a transcript or a media file.")
+    text, transcript = _clean_text(text), _clean_text(transcript)
+    if not (text or url.strip() or transcript or files):
+        raise HTTPException(400, "Please paste the message you received, add a link, or upload a photo or video.")
+    if text and not (url.strip() or transcript or files) and _meaningful(text) < 8:
+        raise HTTPException(400, "That is too short to check. Please paste the full message about the scheme, "
+                                 "benefit or notice you received.")
+    truncated = len(text) > MAX_CLAIM_CHARS
     if url and not re.match(r"^(https?://)?[\w.-]+\.[a-z]{2,}|^https?://(localhost|127\.0\.0\.1)", url.strip(), re.I):
         raise HTTPException(400, "URL is not valid.")
     profile_id = db.save_profile(profile) if profile and any(profile.values()) else None
-    inputs = {"text": text.strip()[:10000], "url": url.strip()[:2000], "transcript": transcript.strip()[:20000],
+    inputs = {"text": text[:MAX_CLAIM_CHARS], "truncated": truncated, "url": url.strip()[:2000],
+              "transcript": transcript[:MAX_CLAIM_CHARS],
               "files": files, "reply_language": reply_language if reply_language in REPLY_LANGS else "auto",
               "profile_fields": sorted(k for k, v in (profile or {}).items() if v)}
     audit_id = db.create_audit(inputs, profile_id)
@@ -186,7 +225,7 @@ def _ingest(text: str, url: str, transcript: str, profile: Optional[dict], files
 
 
 # ---------------- endpoints ----------------
-@app.get("/health", include_in_schema=False)
+@app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
 def health_short():
     return {"status": "healthy"}
 
@@ -242,7 +281,7 @@ async def ingest(text: str = Form(""), url: str = Form(""), transcript: str = Fo
     return _ingest(text, url, transcript, prof, stored, reply_language)
 
 
-@app.post("/api/voice", dependencies=auth)
+@app.post("/api/voice", dependencies=auth + [Depends(rate_limit)])
 def voice(req: SpeakRequest):
     """Spoken verdict, made on demand when the citizen presses Listen."""
     if not req.text.strip():
@@ -253,7 +292,7 @@ def voice(req: SpeakRequest):
     return out
 
 
-@app.post("/api/audit/forensics", dependencies=auth)
+@app.post("/api/audit/forensics", dependencies=auth + [Depends(rate_limit)])
 def forensics(req: ForensicsRequest):
     """F2: run text, source and media verification and store the result."""
     audit = db.get_audit(req.audit_id)
@@ -404,7 +443,7 @@ def demo_profile():
     return json.loads((DEMO_DIR / "demo_profile.json").read_text())
 
 
-@app.post("/api/demo/{scenario}", dependencies=auth)
+@app.post("/api/demo/{scenario}", dependencies=auth + [Depends(rate_limit)])
 def demo(scenario: str, media: str = "video", reply_language: str = "auto"):
     """Load a ready-made demo case (genuine or fraud) with sample media and a sample citizen profile."""
     if scenario not in DEMO_SCENARIOS:
@@ -426,7 +465,7 @@ app.mount("/media", StaticFiles(directory=config.UPLOAD_DIR), name="media")
 if config.CLIENT_DIST.exists():
     app.mount("/assets", StaticFiles(directory=config.CLIENT_DIST / "assets", check_dir=False), name="assets")
 
-    @app.get("/{path:path}", include_in_schema=False)
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def spa(path: str):
         if path.startswith(("api/", "portal", "artifacts/", "media/")):
             raise HTTPException(404)

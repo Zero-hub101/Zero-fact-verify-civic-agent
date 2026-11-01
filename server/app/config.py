@@ -42,7 +42,7 @@ MAX_AGENT_STEPS = 10
 STEP_TIMEOUT_MS = int(os.getenv("AGENT_STEP_TIMEOUT_MS", "15000"))
 HUMAN_WAIT_SECONDS = int(os.getenv("AGENT_HUMAN_WAIT_SECONDS", "900"))
 RETENTION_HOURS = float(os.getenv("PROFILE_RETENTION_HOURS", "24"))
-MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "50"))
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "20"))
 ALLOW_URL_FETCH = os.getenv("ALLOW_URL_FETCH", "true").lower() != "false"
 
 for d in (RUNTIME_DIR, UPLOAD_DIR, ARTIFACT_DIR):
