@@ -71,7 +71,7 @@ def build(audit: dict, task: Optional[dict], receipt: Optional[dict]) -> str:
             lines.append("")
 
     rs = r.get("research")
-    if rs and not rs.get("error"):
+    if rs and not rs.get("error") and rs.get("status") != "skipped":
         lines += ["## Live web research (with sources)", "",
                   f"- Engine: {rs['provider']} · model `{rs['model']}` · {rs['seconds']} s",
                   f"- Claim language: {rs['language']['name']}",

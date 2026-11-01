@@ -180,6 +180,27 @@ def _clean_text(t: str) -> str:
     return _CONTROL.sub("", t or "").strip()
 
 
+def _looks_like_noise(t: str) -> bool:
+    """Keyboard mashing or one repeated character: reject before any AI call."""
+    chars = [c.lower() for c in t if c.isalnum()]
+    if not chars:
+        return True
+    top = max(chars.count(c) for c in set(chars))
+    if len(chars) >= 12 and top / len(chars) > 0.6:                 # "AAAAAAAAAAAA", "abababab..."
+        return True
+    if len(chars) >= 20 and len(set(chars)) <= 3:
+        return True
+    words = re.findall(r"[a-zA-Z]+", t)
+    latin = sum(len(w) for w in words)
+    if latin >= 0.8 * len(chars):                                    # Latin-script text only
+        if max((len(w) for w in words), default=0) >= 25:          # one huge "word": asdfghjklqwertyuiopzxcv...
+            return True
+        vowels = sum(1 for c in "".join(words).lower() if c in "aeiou")
+        if latin >= 12 and vowels / latin < 0.12:                    # "sdfghjkl qwrtyp zxcvbnm"
+            return True
+    return False
+
+
 def _meaningful(t: str) -> int:
     """Letters and digits (any script); emoji, punctuation and spaces don't count."""
     return sum(1 for c in t if c.isalnum())
@@ -208,10 +229,17 @@ def _ingest(text: str, url: str, transcript: str, profile: Optional[dict], files
     text, transcript = _clean_text(text), _clean_text(transcript)
     if not (text or url.strip() or transcript or files):
         raise HTTPException(400, "Please paste the message you received, add a link, or upload a photo or video.")
-    if text and not (url.strip() or transcript or files) and _meaningful(text) < 8:
-        raise HTTPException(400, "That is too short to check. Please paste the full message about the scheme, "
-                                 "benefit or notice you received.")
-    truncated = len(text) > MAX_CLAIM_CHARS
+    if len(text) > MAX_CLAIM_CHARS or len(transcript) > MAX_CLAIM_CHARS:
+        raise HTTPException(400, f"Message is too long (maximum {MAX_CLAIM_CHARS:,} characters). "
+                                 "Please paste only the part about the scheme, benefit or notice.")
+    if text and not (url.strip() or transcript or files):
+        if _meaningful(text) < 12:
+            raise HTTPException(400, "That is too short to check. Please paste the full message about the scheme, "
+                                     "benefit or notice you received.")
+        if _looks_like_noise(text):
+            raise HTTPException(400, "This does not look like a real message. Please paste the actual message about "
+                                     "a scheme, benefit or notice you received.")
+    truncated = False
     if url and not re.match(r"^(https?://)?[\w.-]+\.[a-z]{2,}|^https?://(localhost|127\.0\.0\.1)", url.strip(), re.I):
         raise HTTPException(400, "URL is not valid.")
     profile_id = db.save_profile(profile) if profile and any(profile.values()) else None

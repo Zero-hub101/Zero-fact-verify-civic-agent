@@ -11,6 +11,19 @@
 3. Click **🖼️ Edited photo**, then open **Technical details** to see the highlighted pasted-in area, the AI team that worked on it, and the sources.
 4. Try your own text, e.g. a PM-KISAN or Ayushman card message, or a link like `http://scholarship-gov-in.help`.
 
+## Verdicts and thresholds (reproducible)
+
+| Verdict | Shown to the citizen | Rule |
+|---|---|---|
+| `authentic` | "This looks genuine." | trust score ≥ 0.75 (the agent may run only here, and only for schemes with a playbook) |
+| `unverified` | "We could not confirm this. Be careful." | 0.40 ≤ trust < 0.75 |
+| `likely_fraudulent` | "This looks like a scam. Do not act on it." | trust < 0.40, or manipulated media |
+| `off_topic` | "This does not look like a message about a government scheme." | no scheme, no warning sign, no civic words, no media; AI research and review are skipped (`status: "skipped"`) |
+
+Trust score = weighted mix of the rule engine (45%), AI research (40% with live sources, 15% without) and the independent AI review (15%), then lowered by media forensics. Every response has the same keys; skipped parts are `{"status": "skipped", "reason": ...}` and `seconds` gives the processing time.
+
+**Input rules:** messages over 4,000 characters, under 12 letters/digits, or keyboard-mash/noise are rejected with a clear message before any AI call. Uploads: PNG/JPG/WEBP/MP4/MOV/WEBM up to 20 MB and 40 megapixels, content-checked. **Abuse limits:** 40 checks per visitor per 10 minutes. User text is HTML-escaped in reports and rendered as plain text in the UI.
+
 ## What it does
 
 - **Plain answer first**: what it is, why, and what to do, translated into the citizen's language with a spoken reply. All scores and forensics are folded under "Technical details" for fact-checkers.

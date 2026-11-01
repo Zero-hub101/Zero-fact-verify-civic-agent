@@ -75,12 +75,17 @@ def test_junk_is_rejected_and_report_is_escaped(server):
     requests.post(f"{server}/api/audit/forensics", json={"audit_id": a["audit_id"]}, timeout=60)
     rep = requests.get(f"{server}/api/audit/{a['audit_id']}/report", timeout=30).text
     assert "<script>" not in rep and "](http://evil)" not in rep
-    long = requests.post(f"{server}/api/audit/ingest", data={"text": "scholarship fee " * 2000}, timeout=30).json()
-    assert len(long["inputs"]["text"]) <= 4000 and long["inputs"]["truncated"]
+    long = requests.post(f"{server}/api/audit/ingest", data={"text": "scholarship fee " * 2000}, timeout=30)
+    assert long.status_code == 400 and "too long" in long.json()["detail"]
+    ok = requests.post(f"{server}/api/audit/ingest", data={"text": ("PM Kisan pay Rs 499 fee now. " * 200)[:4000]}, timeout=30)
+    assert ok.status_code == 200 and len(ok.json()["inputs"]["text"]) == 4000
+    for noise in ["asdfghjklqwertyuiopzxcvbnm", "A" * 2000, "sdfghjkl qwrtyp zxcvbnm", "ababababababababababab"]:
+        assert requests.post(f"{server}/api/audit/ingest", data={"text": noise}, timeout=30).status_code == 400, noise
     assert requests.head(f"{server}/health", timeout=10).status_code == 200
 
 
 def test_off_topic_skips_ai_research_and_review(server):
     a = requests.post(f"{server}/api/audit/ingest", data={"text": "Who won the cricket match yesterday?"}, timeout=30).json()
     res = requests.post(f"{server}/api/audit/forensics", json={"audit_id": a["audit_id"]}, timeout=60).json()
-    assert res["verdict"] == "off_topic" and res["ai_review"] is None and res["research"] is None
+    assert res["verdict"] == "off_topic"
+    assert res["ai_review"]["status"] == "skipped" and res["research"]["status"] == "skipped" and res["seconds"] >= 0

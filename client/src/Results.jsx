@@ -258,12 +258,11 @@ function TeamStrip({ team }) {
 
 function Research({ r }) {
   const rs = r.research;
-  if (!rs) {
+  if (!rs || rs.status === "skipped") {
     return (
       <div className="card research off">
         <h3>AI research</h3>
-        <p className="muted small">No research model is active. Add <code>GEMINI_API_KEY</code> to <code>.env</code> to research every claim on the
-          live web with Google Search, with a source link for each finding.</p>
+        <p className="muted small">{(rs && rs.reason) || "AI research was not run for this message."}</p>
       </div>
     );
   }

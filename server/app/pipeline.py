@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -104,6 +105,7 @@ def _off_topic(claim: str, scheme: Optional[dict], text_result: dict, media_tamp
 
 
 def run(inputs: dict) -> dict:
+    t_start = time.time()
     files = inputs.get("files", [])
     url = inputs.get("url") or None
     warnings: list[str] = []
@@ -355,8 +357,13 @@ def run(inputs: dict) -> dict:
         "matched_scheme": _public_scheme(scheme),
         "media": media_results,
         "url": url_result,
-        "ai_review": ai,
-        "research": found,
+        "ai_review": ai if ai else {"status": "skipped", "reason": (
+            "Not about a government scheme, so no AI review was needed." if clearly_off else
+            "No AI review service was available.")},
+        "research": found if found else {"status": "skipped", "reason": (
+            "Not about a government scheme, so no AI research was needed." if clearly_off else
+            "No AI research service was available or the message had no text.")},
+        "seconds": round(time.time() - t_start, 1),
         "language": lang,
         "reply_language": {"code": reply_code, "name": language.name_for(reply_code)},
         "claim_en": claim_en,
