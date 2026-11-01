@@ -39,6 +39,8 @@ REPLY_LANGS = {"auto", "en", "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa
 async def lifespan(_app):
     db.init()
     threading.Thread(target=_purge_loop, daemon=True, name="profile-purge").start()
+    from .ai.providers.local_ai_detector import warm_up
+    threading.Thread(target=warm_up, daemon=True, name="ai-detector-warmup").start()
     log.info("FactVerify ready. Portal sandbox at %s/portal/", config.PUBLIC_BASE_URL)
     yield
 

@@ -5,7 +5,7 @@
     AI_SPEECH=sarvam,groq,elevenlabs,whisper,gemini     audio in videos -> text
     AI_VOICE=sarvam,elevenlabs                          verdict read aloud in the user's language
     AI_OCR=ocrspace,tesseract                           text printed in images
-    AI_IMAGE_AI=sightengine                             AI-generated image / deepfake detection
+    AI_IMAGE_AI=localdetector,sightengine               AI-generated image detection (free local model first)
     AI_VISION=openai,gemini                             what an image shows and claims
     AI_REVIEW=mistral,cohere,ollama,claude,openai       independent second opinion (free options first)
 
@@ -24,6 +24,7 @@ from .providers.cohere import CohereProvider
 from .providers.elevenlabs import ElevenLabsProvider
 from .providers.gemini import GeminiProvider
 from .providers.groq import GroqProvider
+from .providers.local_ai_detector import LocalAiDetectorProvider
 from .providers.local_tesseract import TesseractProvider
 from .providers.local_whisper import LocalWhisperProvider
 from .providers.mistral import MistralProvider
@@ -38,7 +39,7 @@ log = logging.getLogger("factverify.router")
 PROVIDERS: dict[str, Provider] = {p.id: p for p in (
     GeminiProvider(), SarvamProvider(), ElevenLabsProvider(), GroqProvider(), SightengineProvider(),
     OcrSpaceProvider(), OpenAIProvider(), MistralProvider(), CohereProvider(), OllamaProvider(), ClaudeProvider(),
-    LocalWhisperProvider(), TesseractProvider())}
+    LocalWhisperProvider(), TesseractProvider(), LocalAiDetectorProvider())}
 
 ROLES = {
     "research": ("AI_RESEARCH", "gemini", "Live web research with sources"),
@@ -46,7 +47,7 @@ ROLES = {
     "speech": ("AI_SPEECH", "sarvam,groq,elevenlabs,whisper,gemini", "Speech to text"),
     "voice": ("AI_VOICE", "sarvam,elevenlabs", "Spoken reply (text to speech)"),
     "ocr": ("AI_OCR", "ocrspace,tesseract", "Text in images"),
-    "image_ai": ("AI_IMAGE_AI", "sightengine", "AI-generated image & deepfake detection"),
+    "image_ai": ("AI_IMAGE_AI", "localdetector,sightengine", "AI-generated image & deepfake detection"),
     "vision": ("AI_VISION", "openai,gemini", "Image understanding"),
     "review": ("AI_REVIEW", "mistral,cohere,ollama,claude,openai", "Independent second opinion"),
 }

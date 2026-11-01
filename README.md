@@ -2,7 +2,7 @@
 
 Check whether a public-service claim is real, then let a browser agent complete the official application, with the citizen approving every consequential step.
 
-- **AI team**: 11 AI services work together, each doing one job: research, translation, speech-to-text, spoken replies, text in images, AI-image detection, image understanding and review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
+- **AI team**: 12 AI services work together, each doing one job: research, translation, speech-to-text, spoken replies, text in images, AI-image detection, image understanding and review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
 - **Research (any Indian language)**: Google Gemini 4 Argon searches the live web with Grounding with Google Search, checks every detail against official sites and fact-checkers, and links each finding to the page that proves it. It answers in the citizen's language.
 - **Verify**: claim text, links, images and videos are checked in parallel against a trusted scheme registry, scam-pattern rules and media forensics. The result is a 0–1 trust score with `manipulationScore` and `deepfakeDetected`.
 - **Gate**: the agent only launches above the 0.75 threshold. Manipulated media aborts with `aborted_security_risk` and no browser is opened.
@@ -73,7 +73,7 @@ python -m pytest -v
 
 To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 
-## AI team: 11 AI services, one job each
+## AI team: 12 AI services, one job each
 
 | # | Service | Job in FactVerify | Get the key | Setting |
 |---|---|---|---|---|
@@ -81,7 +81,8 @@ To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 | 2 | **Sarvam AI** (Mayura, Saaras v3, Bulbul v3) | Indian-language translation, speech-to-text and spoken replies | https://dashboard.sarvam.ai | `SARVAM_API_KEY` |
 | 3 | **ElevenLabs** | Natural multilingual voice; backup speech-to-text (Scribe) | https://elevenlabs.io/app/settings/api-keys | `ELEVENLABS_API_KEY` |
 | 4 | **Groq** (Whisper Large v3) | Very fast speech-to-text and speech-to-English | https://console.groq.com/keys | `GROQ_API_KEY` |
-| 5 | **Sightengine** | Detects AI-generated images (Midjourney, DALL·E, Stable Diffusion…) and deepfakes | https://sightengine.com | `SIGHTENGINE_API_USER`, `SIGHTENGINE_API_SECRET` |
+| 5 | **Local AI-image detector** (`Organika/sdxl-detector`, runs on your laptop) | Detects AI-generated images, free with **no account or key** | `pip install transformers torch` (model downloads on first start) | `LOCAL_AI_IMAGE_MODEL` |
+| 5b | **Sightengine** (optional backup) | AI-generated image and deepfake detection in the cloud | https://sightengine.com | `SIGHTENGINE_API_USER`, `SIGHTENGINE_API_SECRET` |
 | 6 | **OCR.space** | Reads text in images, including Hindi, Tamil, Telugu and Kannada | https://ocr.space/ocrapi | `OCR_SPACE_API_KEY` |
 | 7 | **OpenAI** (`gpt-5.4-mini`) | Image understanding: what a picture shows, claims and red flags; backup reviewer | https://platform.openai.com/api-keys | `OPENAI_API_KEY` |
 | 8 | **Anthropic Claude** (Sonnet 5.5) | Independent second opinion on the claim | https://console.anthropic.com/settings/keys | `ANTHROPIC_API_KEY` |
@@ -99,7 +100,7 @@ To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 | speech | sarvam → groq → elevenlabs → whisper → gemini | Transcript of what is said in a video |
 | voice | sarvam → elevenlabs | 🔊 "Listen" button reading the verdict in their language |
 | ocr | ocrspace → tesseract | Text read from screenshots and posters |
-| image_ai | sightengine | "93% AI-generated" warning on images and video frames |
+| image_ai | localdetector → sightengine | "93% AI-generated" warning on images and video frames |
 | vision | openai → gemini | What the image shows, its claims and red flags |
 | review | mistral → cohere → ollama → claude → openai | Second opinion blended into the score (free options first) |
 

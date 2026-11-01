@@ -10,5 +10,6 @@ reportlab>=4.1
 requests>=2.31
 pytest>=8.0
 # Optional extras:
+#   transformers torch - free local AI-generated image detector (no account; ~350 MB model downloads on first use)
+#   faster-whisper     - free offline speech-to-text
 #   pytesseract      - read text from uploaded images (also install the Tesseract OCR program)
-#   faster-whisper   - transcribe speech in uploaded videos

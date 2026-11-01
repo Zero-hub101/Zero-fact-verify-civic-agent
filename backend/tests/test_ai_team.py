@@ -111,6 +111,7 @@ def test_image_roles(fake_http, demo_media):
 
 
 def test_full_team_pipeline(fake_http, demo_media, monkeypatch):
+    monkeypatch.setenv("LOCAL_AI_IMAGE_DISABLED", "true")       # use the cloud detector in this test
     monkeypatch.setattr(config, "GEMINI_API_KEY", "gm")
     monkeypatch.setattr(gemini, "_post", lambda url, body, timeout=120: _interactions_response())
     up = config.UPLOAD_DIR / "team_test.jpg"
@@ -131,6 +132,7 @@ def test_full_team_pipeline(fake_http, demo_media, monkeypatch):
 
 
 def test_failing_provider_falls_back_gracefully(fake_http, monkeypatch, demo_media):
+    monkeypatch.setenv("LOCAL_AI_IMAGE_DISABLED", "true")
     def broken(*a, **k):
         raise http.ProviderError("Sightengine HTTP 401: bad key", 401)
     monkeypatch.setattr(sightengine.SightengineProvider, "detect_ai_image", broken)
@@ -175,3 +177,23 @@ def test_ollama_local_review(monkeypatch):
     r = p.review("Pay Rs 499 to UPI 98xxx@ybl", None)
     assert r["verdict"] == "fraudulent" and r["authenticity"] == 0.1 and sent["format"] == "json"
     ollama._cache.update(t=0.0, ok=False)
+
+
+def test_local_ai_image_detector(monkeypatch, demo_media):
+    from app.ai.providers import local_ai_detector as lad
+    monkeypatch.setattr(lad.LocalAiDetectorProvider, "enabled", lambda self: True)
+    monkeypatch.setenv("SIGHTENGINE_API_USER", "u")
+    monkeypatch.setenv("SIGHTENGINE_API_SECRET", "x")
+    assert router.get("image_ai").id == "localdetector"           # free local model is preferred
+    seen = {}
+
+    def fake_classifier(model):
+        seen["model"] = model
+        return lambda img, top_k=5: [{"label": "artificial", "score": 0.91}, {"label": "human", "score": 0.09}]
+    monkeypatch.setattr(lad, "_classifier", fake_classifier)
+    r = lad.LocalAiDetectorProvider().detect_ai_image(demo_media / "genuine_notice.jpg")
+    assert r["ai_generated"] == 0.91 and seen["model"] == "Organika/sdxl-detector"
+    for labels, expect in (([("FAKE", 0.8), ("REAL", 0.2)], 0.8), ([("AI-generated", 0.3), ("human", 0.7)], 0.3)):
+        monkeypatch.setattr(lad, "_classifier", lambda m, labels=labels: (
+            lambda img, top_k=5: [{"label": l, "score": sc} for l, sc in labels]))
+        assert lad.LocalAiDetectorProvider().detect_ai_image(demo_media / "genuine_notice.jpg")["ai_generated"] == expect
