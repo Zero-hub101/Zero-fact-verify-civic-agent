@@ -1,13 +1,24 @@
 # FactVerify Civic Agent
 
-Check whether a public-service claim is real, then let a browser agent complete the official application, with the citizen approving every consequential step.
+**Got a WhatsApp forward about a scholarship, pension or government scheme? Paste it in (any Indian language, or a photo or video of it). FactVerify tells you in simple words whether it is real or a scam, why, and what to do. If it is real, an AI helper can fill the application form for you, and it always stops and asks before submitting.**
 
-- **AI team**: 12 AI services work together, each doing one job: research, translation, speech-to-text, spoken replies, text in images, AI-image detection, image understanding and review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
-- **Research (any Indian language)**: Google Gemini 4 Argon searches the live web with Grounding with Google Search, checks every detail against official sites and fact-checkers, and links each finding to the page that proves it. It answers in the citizen's language.
-- **Verify**: claim text, links, images and videos are checked in parallel against a trusted scheme registry, scam-pattern rules and media forensics. The result is a 0–1 trust score with `manipulationScore` and `deepfakeDetected`.
-- **Gate**: the agent only launches above the 0.75 threshold. Manipulated media aborts with `aborted_security_risk` and no browser is opened.
-- **Execute**: a Playwright agent runs at most 10 steps on approved hosts, pausing for the CAPTCHA, the final-submit approval, missing data, portal errors and payment pages.
-- **Receipt**: the confirmation code and the portal's PDF are stored as a hash-chained, append-only record, and a Markdown provenance report can be downloaded.
+**🔗 Live demo:** _LIVE_URL_ · **🎬 Demo video:** _VIDEO_URL_ · **Health check:** `/health`
+
+## How to evaluate (2 minutes)
+
+1. Open the live demo and click **💬 Hindi WhatsApp scam**. In about 10 seconds you get "This looks like a scam", the reasons in plain words, what to do, and a spoken reply in Hindi (press **Listen**).
+2. Click **✅ Real scholarship notice**. It is matched to the real Central Sector Scheme of Scholarship and passes. Click **Let the agent fill the application**: the agent fills a practice copy of the form, stops for you to type the security code, then asks for approval before submitting.
+3. Click **🖼️ Edited photo**, then open **Technical details** to see the highlighted pasted-in area, the AI team that worked on it, and the sources.
+4. Try your own text, e.g. a PM-KISAN or Ayushman card message, or a link like `http://scholarship-gov-in.help`.
+
+## What it does
+
+- **Plain answer first**: what it is, why, and what to do, translated into the citizen's language with a spoken reply. All scores and forensics are folded under "Technical details" for fact-checkers.
+- **AI team**: each AI does one job with a backup: Gemini (research, image reading), Sarvam (Indian-language translation and voice), OCR.space (text in images), Sightengine (AI-made image check), Groq (independent second opinion). Jobs are assigned in settings, so models can be swapped without code changes.
+- **Real data only**: the scheme list holds real central schemes (Central Sector Scholarship, PM-KISAN, Ayushman Bharat PM-JAY) with their official sources; every claim is also researched live by Gemini. No mock datasets.
+- **Catches disguised scams**: fee requests, OTP/PIN requests (also written as "0TP", "o.t.p", "6 digit code"), personal UPI IDs, WhatsApp-only applications, look-alike "gov-in" links, edited photos and videos, in English, Hindi, Tamil, Telugu, Kannada and Hinglish.
+- **Safe agent**: only runs when a claim passes; at most 10 steps on approved sites; a human solves CAPTCHAs and approves the final submit; personal details are encrypted and deleted after 24 hours; every step is written to a tamper-proof (hash-chained) record with a downloadable report.
+- **Tested hard**: 62 automated tests, plus stress runs of 16,000+ generated inputs (broken links, huge or corrupt files, junk AI answers, disguised scams) with no crashes.
 
 Stack: React dashboard (prebuilt in `client/dist`) · FastAPI · Playwright · SQLite · AES-256-GCM.
 
@@ -176,8 +187,9 @@ Overall score: `0.5 × text + 0.5 × (1 − media tamper)`. It is capped at 0.3 
 ## Known limitations
 
 - Forensics produce **signals, not proof**. JPEG-ghost detection needs a JPEG with prior compression. Heavily re-encoded social-media video and fully AI-generated faces need a trained deepfake model, which can be added in `forensics/media.py`.
-- The registry ships with **sample entries**. Replace them with official figures before real use.
-- The bundled portal is a **sandbox**. Live portals need their own playbook and permission.
+- The scheme list covers 3 real central schemes; other schemes are checked by live AI research only.
+- The agent fills a **practice copy** of the scholarship form (`/portal`), clearly labelled; it never submits to a real government site. Real portals need their own playbook and permission.
+- On free Gemini keys, Google Search grounding has no quota, so research runs without live web sources and is marked as such (and weighted lower).
 - SQLite suits a single machine. For production, move `db.py` to PostgreSQL.
 - Live research needs `GEMINI_API_KEY` and internet. Without it, the app falls back to the registry and rules. Google bills grounded searches per query on Gemini 3+ models, so research runs once per claim.
 - Speech transcription uses Gemini (or local faster-whisper). Image OCR needs Tesseract.
