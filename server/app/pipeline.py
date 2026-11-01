@@ -292,7 +292,7 @@ def run(inputs: dict) -> dict:
 
     # ---- VOICE role: speak the verdict in the citizen's language
     voice = None
-    if router.get("voice") and verdict != "off_topic":
+    if verdict != "off_topic":
         spoken_lang, spoken = "en", _spoken_summary(verdict, authenticity, found, scheme, deepfake)
         loc = (found or {}).get("localized")
         if reply_code != "en":
@@ -302,12 +302,14 @@ def run(inputs: dict) -> dict:
                 tr = use("translation", lambda p: p.translate({"t": spoken}, reply_code))
                 if tr and tr.get("t"):
                     spoken_lang, spoken = reply_code, tr["t"]
-        audio = use("voice", lambda p: p.speak(spoken, spoken_lang))
+        # The text always goes back, so the page can read it aloud with the browser's own voice
+        # when no voice service is available (no key, or out of credits).
+        voice = {"url": None, "lang": spoken_lang, "lang_name": language.name_for(spoken_lang), "text": spoken}
+        audio = use("voice", lambda p: p.speak(spoken, spoken_lang)) if router.get("voice") else None
         if audio and isinstance(audio, tuple):
             name = f"voice_{uuid.uuid4().hex[:10]}.{audio[1]}"
             (config.ARTIFACT_DIR / name).write_bytes(audio[0])
-            voice = {"url": f"/artifacts/{name}", "lang": spoken_lang, "lang_name": language.name_for(spoken_lang),
-                     "text": spoken}
+            voice["url"] = f"/artifacts/{name}"
 
     return {
         "authenticity": authenticity,

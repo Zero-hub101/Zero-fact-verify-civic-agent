@@ -8,3 +8,4 @@ __pycache__/
 .venv/
 client/node_modules/
 .pytest_cache/
+node_modules

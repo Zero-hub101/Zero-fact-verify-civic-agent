@@ -1,4 +1,50 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const SPEECH_LANG = { en: "en-IN", hi: "hi-IN", ta: "ta-IN", te: "te-IN", kn: "kn-IN", ml: "ml-IN", bn: "bn-IN",
+  mr: "mr-IN", gu: "gu-IN", pa: "pa-IN", or: "or-IN", ur: "ur-IN" };
+
+// Spoken reply: the voice service's audio when there is one, otherwise the browser's own voice.
+function VoiceReply({ voice }) {
+  const [speaking, setSpeaking] = useState(false);
+  const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [voices, setVoices] = useState(() => (canSpeak ? window.speechSynthesis.getVoices() : []));
+  useEffect(() => {
+    if (!canSpeak) return undefined;
+    const load = () => setVoices(window.speechSynthesis.getVoices());
+    window.speechSynthesis.addEventListener("voiceschanged", load);
+    load();
+    return () => { window.speechSynthesis.removeEventListener("voiceschanged", load); window.speechSynthesis.cancel(); };
+  }, [canSpeak]);
+  const tag = SPEECH_LANG[voice.lang] || voice.lang;
+  const match = voices.find((v) => v.lang === tag) || voices.find((v) => v.lang.toLowerCase().startsWith(voice.lang));
+  if (voice.url) {
+    return (
+      <div className="voice">
+        <span>🔊 Listen ({voice.lang_name})</span>
+        <audio controls src={voice.url} preload="none" />
+      </div>
+    );
+  }
+  if (!canSpeak || !voice.text || !match) return null;   // no voice for this language on this device
+  const toggle = () => {
+    const synth = window.speechSynthesis;
+    if (speaking) { synth.cancel(); setSpeaking(false); return; }
+    const u = new SpeechSynthesisUtterance(voice.text);
+    u.lang = tag;
+    u.voice = match;
+    u.onend = u.onerror = () => setSpeaking(false);
+    synth.cancel();
+    synth.speak(u);
+    setSpeaking(true);
+  };
+  return (
+    <div className="voice">
+      <button type="button" className="btn ghost" onClick={toggle}>
+        {speaking ? "⏹ Stop" : `🔊 Listen (${voice.lang_name})`}
+      </button>
+    </div>
+  );
+}
 
 const VERDICT = {
   authentic: { label: "Verified authentic", cls: "ok" },
@@ -312,12 +358,7 @@ export default function Results({ data, onLaunch, launching }) {
           </div>
           {r.matched_scheme && <p className="small">Matched: <b>{r.matched_scheme.name}</b></p>}
           {r.language && r.language.code !== "en" && <p className="small">Message language: <b>{r.language.native}</b> ({r.language.name})</p>}
-          {r.voice && (
-            <div className="voice">
-              <span>🔊 Listen ({r.voice.lang_name})</span>
-              <audio controls src={r.voice.url} preload="none" />
-            </div>
-          )}
+          {r.voice && <VoiceReply voice={r.voice} />}
           {r.warnings.map((w, i) => <p key={i} className="warn-text small">⚠ {w}</p>)}
           <div className="launch">
             {r.verdict === "off_topic" ? (
