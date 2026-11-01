@@ -2,7 +2,7 @@
 
 Check whether a public-service claim is real, then let a browser agent complete the official application, with the citizen approving every consequential step.
 
-- **AI team**: 8 AI services work together, each doing one job: research, translation, speech-to-text, spoken replies, text in images, AI-image detection, image understanding and review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
+- **AI team**: 11 AI services work together, each doing one job: research, translation, speech-to-text, spoken replies, text in images, AI-image detection, image understanding and review. Each job is assigned in `.env`, so a specialist model can be plugged in without touching the rest of the app.
 - **Research (any Indian language)**: Google Gemini 4 Argon searches the live web with Grounding with Google Search, checks every detail against official sites and fact-checkers, and links each finding to the page that proves it. It answers in the citizen's language.
 - **Verify**: claim text, links, images and videos are checked in parallel against a trusted scheme registry, scam-pattern rules and media forensics. The result is a 0–1 trust score with `manipulationScore` and `deepfakeDetected`.
 - **Gate**: the agent only launches above the 0.75 threshold. Manipulated media aborts with `aborted_security_risk` and no browser is opened.
@@ -73,7 +73,7 @@ python -m pytest -v
 
 To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 
-## AI team: 8 AI services, one job each
+## AI team: 11 AI services, one job each
 
 | # | Service | Job in FactVerify | Get the key | Setting |
 |---|---|---|---|---|
@@ -85,6 +85,9 @@ To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 | 6 | **OCR.space** | Reads text in images, including Hindi, Tamil, Telugu and Kannada | https://ocr.space/ocrapi | `OCR_SPACE_API_KEY` |
 | 7 | **OpenAI** (`gpt-5.4-mini`) | Image understanding: what a picture shows, claims and red flags; backup reviewer | https://platform.openai.com/api-keys | `OPENAI_API_KEY` |
 | 8 | **Anthropic Claude** (Sonnet 5.5) | Independent second opinion on the claim | https://console.anthropic.com/settings/keys | `ANTHROPIC_API_KEY` |
+| 9 | **Mistral AI** (`mistral-small-latest`) | Free second opinion (Experiment plan) | https://console.mistral.ai/api-keys | `MISTRAL_API_KEY` |
+| 10 | **Cohere** (Command A) | Free second opinion (trial key) | https://dashboard.cohere.com/api-keys | `COHERE_API_KEY` |
+| 11 | **Ollama** (`qwen3:8b` on your laptop) | Free offline second opinion: **no account and no key** | https://ollama.com/download, then `ollama pull qwen3:8b` | `OLLAMA_MODEL` |
 | + | Whisper and Tesseract (offline, optional) | Speech-to-text and OCR without internet | `pip install faster-whisper pytesseract` | – |
 
 **Roles and fallbacks** (set in `.env`; the first service with a key is used):
@@ -98,7 +101,7 @@ To show `missing_data`, clear "National ID: last 4 digits" before verifying.
 | ocr | ocrspace → tesseract | Text read from screenshots and posters |
 | image_ai | sightengine | "93% AI-generated" warning on images and video frames |
 | vision | openai → gemini | What the image shows, its claims and red flags |
-| review | claude → openai | Second opinion blended into the score |
+| review | mistral → cohere → ollama → claude → openai | Second opinion blended into the score (free options first) |
 
 - **You don't need every key.** Any role without a key is skipped and the app still works. Gemini alone covers research, translation, speech and vision as a stand-in.
 - **Failures are contained.** If one service errors (wrong key, quota), its role is marked with an error, a warning is shown, and the rest of the audit continues.

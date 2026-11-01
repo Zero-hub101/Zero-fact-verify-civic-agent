@@ -7,7 +7,7 @@
     AI_OCR=ocrspace,tesseract                           text printed in images
     AI_IMAGE_AI=sightengine                             AI-generated image / deepfake detection
     AI_VISION=openai,gemini                             what an image shows and claims
-    AI_REVIEW=claude,openai                             independent second opinion
+    AI_REVIEW=mistral,cohere,ollama,claude,openai       independent second opinion (free options first)
 
 A comma-separated list is an order of preference: the first provider that is enabled
 (has its key / package) and supports the role is used. Leave a role empty to switch it off.
@@ -20,12 +20,15 @@ from typing import Any, Callable, Optional
 
 from .base import Provider, ProviderError
 from .providers.claude import ClaudeProvider
+from .providers.cohere import CohereProvider
 from .providers.elevenlabs import ElevenLabsProvider
 from .providers.gemini import GeminiProvider
 from .providers.groq import GroqProvider
 from .providers.local_tesseract import TesseractProvider
 from .providers.local_whisper import LocalWhisperProvider
+from .providers.mistral import MistralProvider
 from .providers.ocrspace import OcrSpaceProvider
+from .providers.ollama import OllamaProvider
 from .providers.openai_provider import OpenAIProvider
 from .providers.sarvam import SarvamProvider
 from .providers.sightengine import SightengineProvider
@@ -34,7 +37,8 @@ log = logging.getLogger("factverify.router")
 
 PROVIDERS: dict[str, Provider] = {p.id: p for p in (
     GeminiProvider(), SarvamProvider(), ElevenLabsProvider(), GroqProvider(), SightengineProvider(),
-    OcrSpaceProvider(), OpenAIProvider(), ClaudeProvider(), LocalWhisperProvider(), TesseractProvider())}
+    OcrSpaceProvider(), OpenAIProvider(), MistralProvider(), CohereProvider(), OllamaProvider(), ClaudeProvider(),
+    LocalWhisperProvider(), TesseractProvider())}
 
 ROLES = {
     "research": ("AI_RESEARCH", "gemini", "Live web research with sources"),
@@ -44,7 +48,7 @@ ROLES = {
     "ocr": ("AI_OCR", "ocrspace,tesseract", "Text in images"),
     "image_ai": ("AI_IMAGE_AI", "sightengine", "AI-generated image & deepfake detection"),
     "vision": ("AI_VISION", "openai,gemini", "Image understanding"),
-    "review": ("AI_REVIEW", "claude,openai", "Independent second opinion"),
+    "review": ("AI_REVIEW", "mistral,cohere,ollama,claude,openai", "Independent second opinion"),
 }
 
 

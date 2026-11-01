@@ -46,6 +46,12 @@ def fake_http(monkeypatch):
             return FakeResp({"text": "नमस्ते", "language": "hindi"})
         if "groq.com" in url and "translations" in url:
             return FakeResp({"text": "Hello"})
+        if "mistral.ai" in url:
+            v = json.dumps({"verdict": "fraudulent", "authenticity": 0.04, "reasons": ["fee via personal UPI"]})
+            return FakeResp({"choices": [{"message": {"content": v}}]})
+        if "cohere.com" in url:
+            v = json.dumps({"verdict": "fraudulent", "authenticity": 0.06, "reasons": ["OTP request"]})
+            return FakeResp({"message": {"content": [{"type": "thinking", "thinking": "..."}, {"type": "text", "text": v}]}})
         if "sightengine" in url:
             return FakeResp({"status": "success", "type": {"ai_generated": 0.93}})
         if "ocr.space" in url:
@@ -135,3 +141,37 @@ def test_failing_provider_falls_back_gracefully(fake_http, monkeypatch, demo_med
     assert any("401" in w for w in res["warnings"])
     assert any(c["role"] == "image_ai" and c.get("error") for c in res["ai_team"])
     assert res["media"][0]["tamper_score"] == 0.0           # local forensics still ran
+
+
+def test_mistral_and_cohere_reviewers(fake_http, monkeypatch):
+    from app.ai.providers import cohere, mistral
+    monkeypatch.setenv("MISTRAL_API_KEY", "m")
+    monkeypatch.setenv("COHERE_API_KEY", "c")
+    r = mistral.MistralProvider().review("Pay Rs 499 to UPI 98xxx@ybl", None)
+    assert r["verdict"] == "fraudulent" and r["authenticity"] == 0.04
+    assert fake_http[-1]["headers"]["Authorization"] == "Bearer m"
+    assert fake_http[-1]["body"]["model"] == "mistral-small-latest"
+    r = cohere.CohereProvider().review("Share your OTP on WhatsApp", None)
+    assert r["verdict"] == "fraudulent" and r["authenticity"] == 0.06
+    assert fake_http[-1]["url"] == "https://api.cohere.com/v2/chat"
+    assert router.get("review").id == "mistral"                 # free options come first
+    monkeypatch.setenv("MISTRAL_API_KEY", "")
+    assert router.get("review").id == "cohere"
+
+
+def test_ollama_local_review(monkeypatch):
+    from app.ai.providers import ollama
+    ollama._cache.update(t=0.0, ok=False)
+    sent = {}
+    monkeypatch.setattr(ollama.requests, "get", lambda url, timeout=None: FakeResp({"models": [{"name": "qwen3:8b"}]}))
+
+    def post(url, json=None, timeout=None):
+        sent.update(json)
+        return FakeResp({"message": {"content": '<think>checking</think>{"verdict": "fraudulent", "authenticity": 0.1, '
+                                                '"reasons": ["fee via personal UPI"]}'}})
+    monkeypatch.setattr(ollama.requests, "post", post)
+    p = ollama.OllamaProvider()
+    assert p.enabled()
+    r = p.review("Pay Rs 499 to UPI 98xxx@ybl", None)
+    assert r["verdict"] == "fraudulent" and r["authenticity"] == 0.1 and sent["format"] == "json"
+    ollama._cache.update(t=0.0, ok=False)
