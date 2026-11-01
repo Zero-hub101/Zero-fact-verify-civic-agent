@@ -174,3 +174,9 @@ def test_off_topic_guardrail(server):
     res = verify(server, ing["audit_id"])
     assert res["verdict"] == "off_topic" and res["agentAllowed"] is False
     assert "public-service claim" in res["warnings"][0]
+
+
+def test_spoken_summary_handles_every_verdict():
+    from app import pipeline
+    for v in ("authentic", "unverified", "likely_fraudulent", "off_topic", "something_new"):
+        assert pipeline._spoken_summary(v, 0.5, None, None, False)

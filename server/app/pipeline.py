@@ -69,7 +69,9 @@ def _spoken_summary(verdict: str, authenticity: float, found: Optional[dict], sc
     if found and found.get("summary"):
         return f"{found['summary']} {found.get('advice', '')}".strip()
     head = {"authentic": "This claim appears genuine.", "unverified": "This claim could not be verified.",
-            "likely_fraudulent": "Warning. This claim is likely fraudulent."}[verdict]
+            "likely_fraudulent": "Warning. This claim is likely fraudulent.",
+            "off_topic": "This does not look like a government scheme or public-service claim."}.get(
+                verdict, "This claim could not be verified.")
     parts = [head, f"Trust score {round(authenticity * 100)} out of 100."]
     if deepfake:
         parts.append("The image or video shows signs of manipulation.")
@@ -290,7 +292,7 @@ def run(inputs: dict) -> dict:
 
     # ---- VOICE role: speak the verdict in the citizen's language
     voice = None
-    if router.get("voice"):
+    if router.get("voice") and verdict != "off_topic":
         spoken_lang, spoken = "en", _spoken_summary(verdict, authenticity, found, scheme, deepfake)
         loc = (found or {}).get("localized")
         if reply_code != "en":
