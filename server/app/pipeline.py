@@ -332,7 +332,7 @@ def run(inputs: dict) -> dict:
         voice["service"] = router.get("voice") is not None
 
     # ---- Plain-language explanation for citizens (translated when they asked for another language)
-    explain = plain.build(verdict, scheme, text_result, media_results, found, deepfake)
+    explain = plain.build(verdict, scheme, text_result, media_results, found, deepfake, seed=claim or "")
     explain["lang"] = "en"
     if reply_code != "en":
         flat = {"h": explain["headline"], **{f"w{i}": w for i, w in enumerate(explain["why"])},

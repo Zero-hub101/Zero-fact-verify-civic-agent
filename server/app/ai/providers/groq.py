@@ -34,7 +34,7 @@ class GroqProvider(Provider):
     def _chat(self, prompt: str) -> str:
         r = post_json("Groq chat", "https://api.groq.com/openai/v1/chat/completions",
                       {"Authorization": f"Bearer {os.getenv('GROQ_API_KEY', '')}"},
-                      {"model": self.model_for("review"), "temperature": 0,
+                      {"model": self.model_for("review"), "temperature": float(os.getenv("AI_TEMPERATURE", "0.2")),
                        "messages": [{"role": "user", "content": prompt}]})
         try:
             return r["choices"][0]["message"]["content"] or ""

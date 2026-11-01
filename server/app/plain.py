@@ -3,14 +3,33 @@
 The technical details (scores, forensics, model names) stay in the result for fact-checkers; this is the part
 an ordinary person reads first. Sentences are short and avoid jargon on purpose.
 """
+import hashlib
 from typing import Optional
 
-HEADLINE = {
-    "authentic": "This looks genuine.",
-    "unverified": "We could not confirm this. Be careful.",
-    "likely_fraudulent": "This looks like a scam. Do not act on it.",
-    "off_topic": "This does not look like a message about a government scheme.",
+# A few equally simple phrasings, so answers don't feel copy-pasted. The choice is fixed per message
+# (same message -> same wording), so results stay consistent and reproducible.
+HEADLINES = {
+    "authentic": ["This looks genuine.", "Good news: this looks real.", "This matches the official scheme. It looks genuine."],
+    "unverified": ["We could not confirm this. Be careful.", "We are not sure about this one. Please check before you act.",
+                   "We could not prove this is real. Go carefully."],
+    "likely_fraudulent": ["This looks like a scam. Do not act on it.", "Careful: this looks like a scam. Please do not act on it.",
+                          "This has the signs of a scam. Do not pay or share anything."],
+    "off_topic": ["This does not look like a message about a government scheme.",
+                  "This doesn't seem to be about a government scheme or benefit."],
 }
+HEADLINE = {k: v[0] for k, v in HEADLINES.items()}
+CLOSERS = {
+    "likely_fraudulent": ["Stay safe, and feel free to share this check with your family.",
+                          "When in doubt, ask a family member or visit an official office before acting.", ""],
+    "authentic": ["Good luck with your application!", "Keep your documents ready before you apply.", ""],
+}
+
+
+def _pick(options: list[str], seed: str, salt: str) -> str:
+    if not options:
+        return ""
+    h = int(hashlib.sha256(f"{salt}|{seed}".encode()).hexdigest(), 16)
+    return options[h % len(options)]
 
 # Why: one plain line per warning sign (by rule id).
 WHY_FLAG = {
@@ -34,7 +53,7 @@ WHY_FACT = {
 
 
 def build(verdict: str, scheme: Optional[dict], text_result: dict, media_results: list[dict],
-          found: Optional[dict], deepfake: bool) -> dict:
+          found: Optional[dict], deepfake: bool, seed: str = "") -> dict:
     why: list[str] = []
     for c in text_result.get("contradictions") or []:
         line = WHY_FACT.get(c.get("field"))
@@ -80,4 +99,8 @@ def build(verdict: str, scheme: Optional[dict], text_result: dict, media_results
     else:
         do = ["Paste a message, link, picture or video about a government scheme, benefit, fee or official notice."]
 
-    return {"headline": HEADLINE.get(verdict, HEADLINE["unverified"]), "why": why[:4], "do": do}
+    closer = _pick(CLOSERS.get(verdict, []), seed, "closer")
+    if closer:
+        do.append(closer)
+    headline = _pick(HEADLINES.get(verdict, HEADLINES["unverified"]), seed, "headline")
+    return {"headline": headline, "why": why[:4], "do": do}

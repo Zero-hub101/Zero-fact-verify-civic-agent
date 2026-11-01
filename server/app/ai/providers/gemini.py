@@ -139,10 +139,15 @@ def extract_json(text: str) -> Optional[dict]:
 
 
 # ---------------- calling Gemini ----------------
+# A little natural variation in wording (0.2) so answers don't feel canned; verdicts stay stable because the
+# final score is a weighted mix with fixed rules. Set AI_TEMPERATURE=0 for fully repeatable wording.
+_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0.2"))
+
+
 def _call(prompt: str, model: str, use_search: bool, parts: Optional[list] = None, timeout: int = 120) -> dict:
     """Try the Interactions API, then generateContent. Returns parsed {text, citations, queries, api}."""
     errors = []
-    body: dict = {"model": model, "store": False}
+    body: dict = {"model": model, "store": False, "generation_config": {"temperature": _TEMPERATURE}}
     if parts:
         body["input"] = [{"type": "text", "text": prompt}] + [
             {"type": p["kind"], "data": p["data"], "mime_type": p["mime_type"]} for p in parts]
@@ -162,7 +167,7 @@ def _call(prompt: str, model: str, use_search: bool, parts: Optional[list] = Non
 
     gc_parts: list[dict] = [{"text": prompt}] + [
         {"inline_data": {"mime_type": p["mime_type"], "data": p["data"]}} for p in (parts or [])]
-    gc_body: dict = {"contents": [{"role": "user", "parts": gc_parts}]}
+    gc_body: dict = {"contents": [{"role": "user", "parts": gc_parts}], "generationConfig": {"temperature": _TEMPERATURE}}
     if use_search:
         gc_body["tools"] = [{"google_search": {}}]
     try:
