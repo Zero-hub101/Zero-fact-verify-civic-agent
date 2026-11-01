@@ -1,25 +1,41 @@
-# Render Blueprint: New -> Blueprint -> pick this repository. Then paste your API keys when Render asks.
+# Render Blueprint: New -> Blueprint -> pick this repository. Render then asks for each key marked sync: false;
+# paste your own keys there (they stay in Render, never in the code). Leave a key empty to skip that AI.
 services:
   - type: web
     name: factverify-civic-agent
     runtime: docker
     plan: free
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     autoDeploy: true
     envVars:
       - key: GEMINI_API_KEY
         sync: false
       - key: SARVAM_API_KEY
         sync: false
-      - key: ELEVENLABS_API_KEY
-        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: OCR_SPACE_API_KEY
         sync: false
-      - key: OPENAI_API_KEY
+      - key: SIGHTENGINE_API_USER
         sync: false
+      - key: SIGHTENGINE_API_SECRET
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      # Models and team order that work on free keys (Gemini free keys have no search-grounding quota).
       - key: GEMINI_MODEL
-        value: gemini-4-argon
+        value: gemini-3.5-flash-lite
+      - key: GEMINI_FALLBACK_MODELS
+        value: gemini-3.8-flash,gemini-4-argon
       - key: GEMINI_FAST_MODEL
-        value: gemini-3.8-flash
+        value: gemini-3.5-flash-lite
+      - key: AI_OCR
+        value: ocrspace,gemini
+      - key: AI_VISION
+        value: gemini
+      - key: AI_IMAGE_AI
+        value: sightengine
+      - key: AI_REVIEW
+        value: groq
+      - key: AI_VOICE
+        value: sarvam,elevenlabs

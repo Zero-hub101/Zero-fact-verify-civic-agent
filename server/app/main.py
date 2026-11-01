@@ -186,6 +186,11 @@ def _ingest(text: str, url: str, transcript: str, profile: Optional[dict], files
 
 
 # ---------------- endpoints ----------------
+@app.get("/health", include_in_schema=False)
+def health_short():
+    return {"status": "healthy"}
+
+
 @app.get("/api/health")
 def health():
     from .forensics.media import ffmpeg_available
