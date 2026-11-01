@@ -93,3 +93,11 @@ def test_off_topic_skips_ai_research_and_review(server):
     assert res["ai_review"]["verdict"] == "skipped" and res["research"]["verdict"] == "skipped"
     r = requests.get(f"{server}/media/x.jpg", timeout=10)
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
+
+
+def test_long_url_rejected_and_labels_present(server):
+    r = requests.post(f"{server}/api/audit/ingest", data={"text": "PM Kisan pay Rs 499 fee now please", "url": "https://x.com/" + "a" * 2100}, timeout=30)
+    assert r.status_code == 400 and "too long" in r.json()["detail"]
+    a = requests.post(f"{server}/api/audit/ingest", data={"text": "PM Kisan pay Rs 499 fee now please share OTP"}, timeout=30).json()
+    res = requests.post(f"{server}/api/audit/forensics", json={"audit_id": a["audit_id"]}, timeout=60).json()
+    assert res["plain"]["labels"]["verdict"] == "Likely a scam" and res["plain"]["labels"]["why"]

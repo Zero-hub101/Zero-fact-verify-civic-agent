@@ -31,6 +31,17 @@ def _pick(options: list[str], seed: str, salt: str) -> str:
     h = int(hashlib.sha256(f"{salt}|{seed}".encode()).hexdigest(), 16)
     return options[h % len(options)]
 
+# Screen labels, translated together with the answer so a Hindi (or Tamil...) reader sees no English headings.
+_COMMON = {"why": "Why we think so", "do": "What you should do", "scheme": "Scheme", "listen": "Listen",
+           "trust": "Trust score: higher means more likely genuine. Below 40 usually means a scam.",
+           "helper": "The form-filling helper never submits anything without asking you first."}
+LABELS = {
+    "authentic": {**_COMMON, "verdict": "Looks genuine"},
+    "unverified": {**_COMMON, "verdict": "Not confirmed"},
+    "likely_fraudulent": {**_COMMON, "verdict": "Likely a scam"},
+    "off_topic": {**_COMMON, "verdict": "Not about a government scheme"},
+}
+
 # Why: one plain line per warning sign (by rule id).
 WHY_FLAG = {
     "upfront_fee": "It asks you to pay money first. Real government schemes do not charge you to get a benefit.",

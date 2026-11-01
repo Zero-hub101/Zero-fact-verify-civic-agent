@@ -19,6 +19,30 @@ export const LANGS = [
 ];
 export const EMPTY_PROFILE = Object.fromEntries(PROFILE_FIELDS.map(([k]) => [k, ""]));
 
+// Same rules as the server, so obvious noise is stopped before sending (with a plain reason).
+function checkText(t) {
+  const s = (t || "").trim();
+  if (!s) return "";
+  const vis = [...s].filter((c) => !/\s/.test(c));
+  const alnum = vis.filter((c) => /[\p{L}\p{N}]/u.test(c));
+  const lettery = vis.filter((c) => /[\p{L}\p{N}\p{M}]/u.test(c));
+  if (s.length > 4000) return "Message is too long (maximum 4,000 characters). Please paste only the part about the scheme.";
+  if (alnum.length < 12) return "Please paste the full message about the scheme, benefit or notice.";
+  if (vis.length >= 15 && lettery.length / vis.length < 0.5) return "This does not look like a real message.";
+  const low = alnum.map((c) => c.toLowerCase());
+  const counts = {};
+  low.forEach((c) => { counts[c] = (counts[c] || 0) + 1; });
+  if (Math.max(...Object.values(counts)) / low.length > 0.6) return "This does not look like a real message.";
+  const words = s.match(/[a-zA-Z]+/g) || [];
+  const latin = words.join("").length;
+  if (latin >= 0.8 * alnum.length) {
+    if (Math.max(0, ...words.map((w) => w.length)) >= 25) return "This does not look like a real message.";
+    const vowels = (words.join("").toLowerCase().match(/[aeiou]/g) || []).length;
+    if (latin >= 12 && vowels / latin < 0.12) return "This does not look like a real message.";
+  }
+  return "";
+}
+
 export default function Intake({ onVerified, busy, setBusy, setError }) {
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
@@ -31,8 +55,8 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
   const [replyLang, setReplyLang] = useState("auto");
 
   // Enable the button only for something worth checking (8+ letters/digits, a link, a transcript or a file).
-  const ready = files.length > 0 || url.trim() || transcript.trim() ||
-    [...text].filter((c) => /[\p{L}\p{N}]/u.test(c)).length >= 8;
+  const textIssue = files.length > 0 || url.trim() || transcript.trim() ? "" : checkText(text);
+  const ready = files.length > 0 || url.trim() || transcript.trim() || (text.trim() && !textIssue);
   const addFiles = (list) => setFiles((f) => [...f, ...Array.from(list)].slice(0, 5));
 
   async function verify(ingestPromise) {
@@ -166,6 +190,7 @@ export default function Intake({ onVerified, busy, setBusy, setError }) {
         <button className="primary" disabled={busy || !ready}
           title={ready ? "" : "Paste the message you received, add a link, or upload a photo or video"}>
           {busy ? "Checking…" : "Check this message"}</button>
+        {textIssue && <p className="warn-text small" role="status">{textIssue}</p>}
         {stage && <span className="stage"><span className="spinner" /> {stage}</span>}
       </div>
     </form>

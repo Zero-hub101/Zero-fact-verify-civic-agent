@@ -334,13 +334,16 @@ def run(inputs: dict) -> dict:
     # ---- Plain-language explanation for citizens (translated when they asked for another language)
     explain = plain.build(verdict, scheme, text_result, media_results, found, deepfake, seed=claim or "")
     explain["lang"] = "en"
+    explain["labels"] = dict(plain.LABELS[verdict] if verdict in plain.LABELS else plain.LABELS["unverified"])
     if reply_code != "en":
         flat = {"h": explain["headline"], **{f"w{i}": w for i, w in enumerate(explain["why"])},
-                **{f"d{i}": d for i, d in enumerate(explain["do"])}}
+                **{f"d{i}": d for i, d in enumerate(explain["do"])},
+                **{f"l_{k}": v for k, v in explain["labels"].items()}}
         tr = translate(flat, reply_code)
         if tr and tr.get("h"):
             explain = {"headline": tr["h"], "why": [tr.get(f"w{i}") or w for i, w in enumerate(explain["why"])],
                        "do": [tr.get(f"d{i}") or d for i, d in enumerate(explain["do"])], "lang": reply_code,
+                       "labels": {k: tr.get(f"l_{k}") or v for k, v in explain["labels"].items()},
                        "english": explain}
 
     return {

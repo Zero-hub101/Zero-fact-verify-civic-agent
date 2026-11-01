@@ -287,6 +287,8 @@ def _ingest(text: str, url: str, transcript: str, profile: Optional[dict], files
             raise HTTPException(400, "This does not look like a real message. Please paste the actual message about "
                                      "a scheme, benefit or notice you received.")
     truncated = False
+    if len(url.strip()) > 2000:
+        raise HTTPException(400, "That link is too long (maximum 2,000 characters). Please paste the normal web address.")
     if url and not re.match(r"^(https?://)?[\w.-]+\.[a-z]{2,}|^https?://(localhost|127\.0\.0\.1)", url.strip(), re.I):
         raise HTTPException(400, "URL is not valid.")
     profile_id = db.save_profile(profile) if profile and any(profile.values()) else None

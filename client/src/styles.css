@@ -246,3 +246,4 @@ details.tech[open] > summary { margin-bottom: 12px; }
   .demo-btns { flex-wrap: wrap; }
 }
 .disclaimer { max-width: 1100px; margin: 24px auto 32px; padding: 12px 16px; font-size: 13px; color: #6b7387; text-align: center; line-height: 1.5; border-top: 1px solid #e6e1d6; }
+.gauge-note { max-width: 240px; text-align: center; margin: 4px auto 0; } .reassure { color: var(--ok); margin-top: 8px; }

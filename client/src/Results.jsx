@@ -80,11 +80,11 @@ function PlainAnswer({ p }) {
     <div className="plain">
       <p className="plain-head">{p.headline}</p>
       {p.why && p.why.length > 0 && (<>
-        <p className="plain-label">Why we think so</p>
+        <p className="plain-label">{(p.labels && p.labels.why) || "Why we think so"}</p>
         <ul>{p.why.map((w, i) => <li key={i}>{w}</li>)}</ul>
       </>)}
       {p.do && p.do.length > 0 && (<>
-        <p className="plain-label">What you should do</p>
+        <p className="plain-label">{(p.labels && p.labels.do) || "What you should do"}</p>
         <ul className="do">{p.do.map((d, i) => <li key={i}>{d}</li>)}</ul>
       </>)}
     </div>
@@ -380,18 +380,20 @@ function ClaimMatch({ r }) {
 
 export default function Results({ data, onLaunch, launching }) {
   const r = data.result;
-  const v = VERDICT[r.verdict];
+  const v = VERDICT[r.verdict] || VERDICT.unverified;
+  const L = r.plain && r.plain.labels;
   const findings = (r.media || []).flatMap((m) => m.findings || []);
   return (
     <div className="results">
       <div className="card summary">
         {r.verdict === "off_topic"
           ? <div className="gauge-off">?</div>
-          : <TrustGauge value={r.authenticity} threshold={r.threshold} />}
+          : <div><TrustGauge value={r.authenticity} threshold={r.threshold} />
+              <p className="muted small gauge-note">{(L && L.trust) || "Trust score: higher means more likely genuine. Below 40 usually means a scam."}</p></div>}
         <div className="summary-body">
-          <span className={`verdict ${v.cls}`}>{v.label}</span>
+          <span className={`verdict ${v.cls}`}>{(L && L.verdict) || v.label}</span>
           <PlainAnswer p={r.plain} />
-          {r.matched_scheme && <p className="small">Scheme: <b>{r.matched_scheme.name}</b></p>}
+          {r.matched_scheme && <p className="small">{(L && L.scheme) || "Scheme"}: <b>{r.matched_scheme.name}</b></p>}
           {r.language && r.language.code !== "en" && <p className="small">Message language: <b>{r.language.native}</b> ({r.language.name})</p>}
           {r.voice && <VoiceReply voice={r.voice} />}
           {r.warnings.map((w, i) => <p key={i} className="warn-text small">⚠ {w}</p>)}
@@ -400,11 +402,12 @@ export default function Results({ data, onLaunch, launching }) {
             : r.verdict === "authentic" && r.matched_scheme && !r.matched_scheme.playbook ? (
               <a className="primary big link-btn" href={r.matched_scheme.official_url || `https://${r.matched_scheme.official_domains[0]}`}
                 target="_blank" rel="noreferrer">Open the official website ↗</a>
-            ) : r.agentAllowed ? (
+            ) : r.agentAllowed ? (<>
               <button className="primary big" disabled={launching || !r.has_profile} onClick={onLaunch}>
                 {launching ? "Starting agent…" : "2 · Let the agent fill the application (practice portal)"}
               </button>
-            ) : (
+              <p className="small reassure">🛡️ {(L && L.helper) || "The form-filling helper never submits anything without asking you first."}</p>
+            </>) : (
               <div className="locked">
                 <b>🔒 Form-filling helper switched off.</b> This message did not pass our checks, so we will not use your details anywhere.
                 <button className="ghost" disabled={launching} onClick={onLaunch}>Show what happens if I try anyway</button>

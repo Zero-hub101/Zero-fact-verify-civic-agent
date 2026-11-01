@@ -78,9 +78,9 @@ function App() {
       <footer className="disclaimer">
         FactVerify is an independent student project (FORGE '26). It is <b>not</b> a government website and is not affiliated
         with or endorsed by any government body. Always apply only on official websites ending in .gov.in or .nic.in.
-        Scam already happened? Call 1930 or visit cybercrime.gov.in.
+        Scam already happened? Call 1930 or visit cybercrime.gov.in. Our checks give strong signals, not legal proof.
+        Your personal details are encrypted and deleted automatically after 24 hours.
       </footer>
-      <footer>FactVerify · forensic scores are signals, not proof · personal data encrypted (AES-256-GCM) and wiped 24 h after each task</footer>
     </div>
   );
 }
