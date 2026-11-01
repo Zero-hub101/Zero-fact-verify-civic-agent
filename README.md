@@ -2,7 +2,7 @@
 
 **Got a WhatsApp forward about a scholarship, pension or government scheme? Paste it in (any Indian language, or a photo or video of it). FactVerify tells you in simple words whether it is real or a scam, why, and what to do. If it is real, an AI helper can fill the application form for you, and it always stops and asks before submitting.**
 
-**🔗 Live demo:** _LIVE_URL_ · **🎬 Demo video:** _VIDEO_URL_ · **Health check:** `/health`
+**🔗 Live demo:** https://factverify-civic-agent.onrender.com (free server: the first visit after a quiet spell can take ~50 s to wake up) · **🎬 Demo video:** _VIDEO_URL_ · **Health check:** `/health`
 
 ## How to evaluate (2 minutes)
 
