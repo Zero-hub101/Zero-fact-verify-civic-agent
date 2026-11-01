@@ -165,7 +165,7 @@ def test_specialist_model_plugs_in(gemini, monkeypatch):
     assert res["research"]["localized"]["lang"] == "ta"
     assert res["research"]["localized"]["summary"].startswith("[ta]")
     roles = {c["role"]: c["provider"] for c in res["ai_team"]}
-    assert roles == {"research": "gemini", "translation": "fakelang"}
+    assert roles == {"research": "gemini", "translation": "fakelang", "review": "gemini"}   # Gemini backs up review
     assert {r["role"]: r["active"] for r in router.lineup()}["translation"] == "fakelang"
 
 

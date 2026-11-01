@@ -59,8 +59,14 @@ def register(provider: Provider) -> None:
 
 
 def assigned(role: str) -> list[str]:
+    """Providers for a role, in order. Gemini is always added last as the universal backup (AI_UNIVERSAL_BACKUP),
+    so with only a Gemini key every job still has an AI behind it."""
     env, default, _ = ROLES[role]
-    return [x.strip() for x in os.getenv(env, default).split(",") if x.strip()]
+    out = [x.strip() for x in os.getenv(env, default).split(",") if x.strip()]
+    backup = os.getenv("AI_UNIVERSAL_BACKUP", "gemini").strip()
+    if backup and backup not in out:
+        out.append(backup)
+    return out
 
 
 def get(role: str) -> Optional[Provider]:
