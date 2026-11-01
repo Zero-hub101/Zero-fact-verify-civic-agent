@@ -21,6 +21,7 @@ from typing import Any, Iterator, Optional
 
 from ... import config
 from ...forensics import language
+from .. import cache
 from ..base import Provider, ProviderError
 
 log = logging.getLogger("factverify.research")
@@ -271,7 +272,11 @@ def research_claim(claim: str, scheme: Optional[dict], reply_lang: Optional[str]
     prompt = RESEARCH_PROMPT.format(fact_checkers=", ".join(FACT_CHECKERS), reference=reference,
                                     local_keys=local_keys, claim=claim[:6000])
     try:
-        raw = _call_with_fallback(prompt, config.GEMINI_MODEL, use_search=True)
+        ck = cache.key("research", prompt, config.GEMINI_MODEL, config.GEMINI_FALLBACK_MODELS)
+        raw = cache.get("research", ck)
+        if raw is None:
+            raw = _call_with_fallback(prompt, config.GEMINI_MODEL, use_search=True)
+            cache.put("research", ck, raw)
     except GeminiError as e:
         return {"error": f"Gemini research unavailable: {e}", "language": detected}
     data_reply = reply_code
@@ -366,6 +371,10 @@ VISION_PROMPT = """Describe this image for a fact-checker. Return ONLY JSON:
 
 def describe_image(path: Path) -> dict:
     from ..util import shrink_image
+    ck = cache.key("vision", config.GEMINI_FAST_MODEL, cache.file_hash(path))
+    hit = cache.get("vision", ck)
+    if hit is not None:
+        return hit
     small = shrink_image(path, 1280, 3_000_000)
     try:
         data = base64.b64encode(small.read_bytes()).decode()
@@ -374,15 +383,18 @@ def describe_image(path: Path) -> dict:
     raw = _call_with_fallback(VISION_PROMPT, config.GEMINI_FAST_MODEL, use_search=False,
                               parts=[{"kind": "image", "mime_type": "image/jpeg", "data": data}])
     d = extract_json(raw["text"]) or {}
-    return {"description": str(d.get("description", ""))[:400], "text_in_image": str(d.get("text_in_image", ""))[:3000],
-            "claims": [str(x)[:300] for x in d.get("claims", [])][:10],
-            "red_flags": [str(x)[:300] for x in d.get("red_flags", [])][:10]}
+    out = {"description": str(d.get("description", ""))[:400], "text_in_image": str(d.get("text_in_image", ""))[:3000],
+           "claims": [str(x)[:300] for x in d.get("claims", [])][:10],
+           "red_flags": [str(x)[:300] for x in d.get("red_flags", [])][:10]}
+    if d:
+        cache.put("vision", ck, out)
+    return out
 
 
 class GeminiProvider(Provider):
     id = "gemini"
     name = "Google Gemini"
-    roles = {"research", "translation", "speech", "vision"}
+    roles = {"research", "translation", "speech", "vision", "ocr"}
     specialist_roles = {"research"}
 
     def enabled(self) -> bool:
@@ -402,3 +414,8 @@ class GeminiProvider(Provider):
 
     def describe_image(self, image_path):
         return describe_image(image_path)
+
+    def ocr(self, image_path, lang_hint=""):
+        # Shares one cached vision call with the vision role, so it costs nothing extra.
+        text = describe_image(image_path).get("text_in_image", "")
+        return {"text": text, "language": language.detect(text)["code"] if text else ""}

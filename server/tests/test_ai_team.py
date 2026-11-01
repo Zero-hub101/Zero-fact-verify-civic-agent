@@ -122,12 +122,14 @@ def test_full_team_pipeline(fake_http, demo_media, monkeypatch):
         {"path": str(up), "name": "notice.jpg", "kind": "image", "public_url": "/media/team_test.jpg"}]})
     roles = {c["role"]: c["provider"] for c in res["ai_team"]}
     assert roles == {"ocr": "ocrspace", "image_ai": "sightengine", "vision": "openai", "research": "gemini",
-                     "translation": "sarvam", "voice": "sarvam", "review": "groq"}
+                     "translation": "sarvam", "review": "groq"}
     m = res["media"][0]
     assert m["ai_detection"]["ai_generated"] == 0.93 and m["tamper_score"] >= 0.93 and res["deepfakeDetected"]
     assert m["vision"]["description"] and m["ocr_text"]
     assert res["research"]["localized"]["lang"] == "ta"
-    assert res["voice"]["lang"] == "ta" and (config.ARTIFACT_DIR / res["voice"]["url"].rsplit("/", 1)[-1]).exists()
+    assert res["voice"]["lang"] == "ta" and res["voice"]["service"] and res["voice"]["url"] is None
+    spoken = pipeline.speak(res["voice"]["text"], res["voice"]["lang"])      # made when the citizen presses Listen
+    assert spoken["credit"]["provider"] == "sarvam" and (config.ARTIFACT_DIR / spoken["url"].rsplit("/", 1)[-1]).exists()
     assert len({c["provider"] for c in res["ai_team"]}) >= 5
     team = {r["role"]: r["active"] for r in router.lineup()}
     assert team["speech"] == "sarvam" and team["voice"] == "sarvam"

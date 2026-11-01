@@ -37,6 +37,7 @@ export const api = {
   registry: () => request("/api/registry"),
   playbooks: () => request("/api/playbooks"),
   team: () => request("/api/ai/team"),
+  speak: (text, lang) => request("/api/voice", { method: "POST", json: { text, lang } }),
   tasks: () => request("/api/tasks"),
   run: (audit_id) => request("/api/tasks/run", { method: "POST", json: { audit_id } }),
   state: (id) => request(`/api/tasks/${id}/state`),

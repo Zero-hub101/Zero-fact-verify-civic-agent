@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from . import config
-from .ai import router
+from .ai import cache, router
 from .forensics import language, media, sources, text
 
 log = logging.getLogger("factverify.pipeline")
@@ -21,7 +21,8 @@ def _public_scheme(s: Optional[dict]) -> Optional[dict]:
     if not s:
         return None
     return {k: s[k] for k in ("id", "name", "summary", "benefit_amount", "benefit_period", "application_fee",
-                              "income_limit", "deadline", "eligibility", "official_domains", "playbook", "source")}
+                              "income_limit", "deadline", "eligibility", "official_domains", "playbook", "source")
+            } | {"official_url": s.get("official_url")}
 
 
 def _extract_audio(video: Path, out_dir: str) -> Optional[Path]:
@@ -120,6 +121,21 @@ def run(inputs: dict) -> dict:
                 return None
         return result
 
+    def translate(texts: dict, target: str):
+        """Translation role, remembered per text so repeat runs (and the spoken reply built from it) are stable."""
+        tp = router.get("translation")
+        ck = cache.key("translation", router.assigned("translation"), texts, target)
+        hit = cache.get("translation", ck)
+        if hit is not None and tp:
+            with lock:
+                team.append({"role": "translation", "provider": tp.id, "name": tp.name, "model": tp.model_for("translation"),
+                             "specialist": "translation" in tp.specialist_roles, "seconds": 0, "note": "cached"})
+            return hit
+        out = use("translation", lambda p: p.translate(texts, target))
+        if isinstance(out, dict) and out:
+            cache.put("translation", ck, out)
+        return out
+
     lang_hint = language.detect(inputs.get("text") or "")["code"]
 
     with ThreadPoolExecutor(max_workers=6) as pool:
@@ -175,7 +191,7 @@ def run(inputs: dict) -> dict:
                     "Audio present but no speech model is assigned (AI_SPEECH); paste the transcript to fact-check it")
             continue
         if not tr.get("transcript_en") and tr.get("language") not in ("en", "") :
-            en = use("translation", lambda p: p.translate({"t": tr["transcript"]}, "en"))
+            en = translate({"t": tr["transcript"]}, "en")
             tr["transcript_en"] = (en or {}).get("t", "")
         m.update({"transcript": tr["transcript"], "transcript_en": tr.get("transcript_en", ""),
                   "transcript_language": tr.get("language", ""), "transcription_available": True})
@@ -216,7 +232,7 @@ def run(inputs: dict) -> dict:
     # ---- TRANSLATION role: claim -> English for the rule engine and registry
     claim_en = (found or {}).get("claim_en") or ""
     if lang["code"] != "en" and not claim_en and text_result.get("present"):
-        claim_en = (use("translation", lambda p: p.translate({"claim": claim[:6000]}, "en")) or {}).get("claim", "")
+        claim_en = (translate({"claim": claim[:6000]}, "en") or {}).get("claim", "")
     if claim_en and lang["code"] != "en":
         text_result = text.analyze_claim(claim_en + "\n" + claim, url)
     if found:
@@ -224,8 +240,7 @@ def run(inputs: dict) -> dict:
 
     # ---- TRANSLATION role: verdict -> the citizen's language (if research did not already do it)
     if found and reply_code != "en" and not found.get("localized") and found.get("summary"):
-        loc = use("translation", lambda p: p.translate(
-            {"summary": found["summary"], "advice": found.get("advice", "")}, reply_code))
+        loc = translate({"summary": found["summary"], "advice": found.get("advice", "")}, reply_code)
         if loc:
             found["localized"] = {"lang": reply_code, **loc}
     if found and found.get("localized"):
@@ -286,7 +301,7 @@ def run(inputs: dict) -> dict:
         warnings.insert(0, "This doesn't look like a public-service claim (scheme, benefit, fee, deadline or official "
                            "notice). FactVerify only checks government-service claims.")
 
-    agent_allowed = verdict == "authentic" and scheme is not None and not deepfake
+    agent_allowed = verdict == "authentic" and scheme is not None and bool(scheme.get("playbook")) and not deepfake
     if verdict == "authentic" and scheme is None:
         warnings.append("Claim looks clean but does not match any scheme in the registry, so no portal route is available.")
 
@@ -299,17 +314,15 @@ def run(inputs: dict) -> dict:
             if loc and loc.get("summary"):
                 spoken_lang, spoken = reply_code, f"{loc['summary']} {loc.get('advice', '')}".strip()
             else:
-                tr = use("translation", lambda p: p.translate({"t": spoken}, reply_code))
+                tr = translate({"t": spoken}, reply_code)
                 if tr and tr.get("t"):
                     spoken_lang, spoken = reply_code, tr["t"]
         # The text always goes back, so the page can read it aloud with the browser's own voice
         # when no voice service is available (no key, or out of credits).
         voice = {"url": None, "lang": spoken_lang, "lang_name": language.name_for(spoken_lang), "text": spoken}
-        audio = use("voice", lambda p: p.speak(spoken, spoken_lang)) if router.get("voice") else None
-        if audio and isinstance(audio, tuple):
-            name = f"voice_{uuid.uuid4().hex[:10]}.{audio[1]}"
-            (config.ARTIFACT_DIR / name).write_bytes(audio[0])
-            voice["url"] = f"/artifacts/{name}"
+        # Audio is made only when the citizen presses Listen (speak() below): voice services can take
+        # 5-20 s, and the verdict should not wait for that.
+        voice["service"] = router.get("voice") is not None
 
     return {
         "authenticity": authenticity,
@@ -334,3 +347,27 @@ def run(inputs: dict) -> dict:
         "rule_score": rule_score,
         "warnings": warnings,
     }
+
+
+def speak(text_: str, lang: str) -> dict:
+    """VOICE role on demand: read a verdict aloud. Remembered per text, so pressing Listen again is instant."""
+    text_ = (text_ or "").strip()[:2500]
+    if not text_:
+        return {"error": "Nothing to read."}
+    vp = router.get("voice")
+    if not vp:
+        return {"error": "No voice service is set up."}
+    vkey = cache.key("voice", router.assigned("voice"), lang, text_)
+    audio, credit = cache.get_bytes("voice", vkey), {"provider": vp.id, "name": vp.name, "note": "cached"}
+    if not audio:
+        audio, credit = router.call("voice", lambda p: p.speak(text_, lang))
+        if isinstance(audio, dict) and audio.get("error"):
+            return {"error": audio["error"]}
+        if not (audio and isinstance(audio, tuple)):
+            return {"error": "The voice service returned no audio."}
+        cache.put_bytes("voice", vkey, audio[0], audio[1])
+    name = f"voice_{vkey[:16]}.{audio[1]}"
+    path = config.ARTIFACT_DIR / name
+    if not path.exists():
+        path.write_bytes(audio[0])
+    return {"url": f"/artifacts/{name}", "lang": lang, "lang_name": language.name_for(lang), "credit": credit}

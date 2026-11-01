@@ -93,6 +93,78 @@
       "official_url": "/portal/",
       "playbook": "sandbox_scholarship",
       "source": "Sample entry (replace with official notification)"
+    },
+    {
+      "id": "sch_pm_kisan",
+      "name": "PM-KISAN (Pradhan Mantri Kisan Samman Nidhi)",
+      "aliases": [
+        "pm kisan",
+        "pm-kisan",
+        "pmkisan",
+        "kisan samman nidhi",
+        "pradhan mantri kisan",
+        "पीएम किसान",
+        "किसान सम्मान निधि",
+        "பிஎம் கிசான்",
+        "கிசான் சம்மான்",
+        "పీఎం కిసాన్"
+      ],
+      "summary": "Central government income support for landholding farmer families: Rs 6,000 per year paid in three instalments of Rs 2,000 by direct benefit transfer to Aadhaar-linked bank accounts. Registration and e-KYC are free on the official portal or at Common Service Centres.",
+      "benefit_amount": 6000,
+      "benefit_alt_amounts": [
+        2000
+      ],
+      "benefit_period": "per year (three instalments of Rs 2,000)",
+      "application_fee": 0,
+      "income_limit": null,
+      "deadline": null,
+      "eligibility": [
+        "Landholding farmer family",
+        "Aadhaar-linked bank account and completed e-KYC",
+        "Income-tax payers, institutional landholders and some pensioners are excluded"
+      ],
+      "official_domains": [
+        "pmkisan.gov.in"
+      ],
+      "official_url": "https://pmkisan.gov.in",
+      "playbook": null,
+      "source": "pmkisan.gov.in; Ministry of Agriculture and Farmers Welfare (amount confirmed for 2026-27)"
+    },
+    {
+      "id": "sch_pmjay",
+      "name": "Ayushman Bharat PM-JAY",
+      "aliases": [
+        "ayushman bharat",
+        "ayushman card",
+        "pm-jay",
+        "pmjay",
+        "pm jay",
+        "jan arogya yojana",
+        "ayushman vay vandana",
+        "आयुष्मान भारत",
+        "आयुष्मान कार्ड",
+        "ஆயுஷ்மான் பாரத்",
+        "ఆయుష్మాన్ భారత్"
+      ],
+      "summary": "Cashless hospital cover of up to Rs 5 lakh per family per year for secondary and tertiary care at empanelled hospitals, for economically vulnerable families; senior citizens aged 70+ also get Rs 5 lakh cover (Ayushman Vay Vandana). The Ayushman card and treatment are free.",
+      "benefit_amount": 500000,
+      "benefit_period": "per family per year (hospital cover)",
+      "application_fee": 0,
+      "income_limit": null,
+      "deadline": null,
+      "eligibility": [
+        "Families identified in SECC 2011 and state lists",
+        "All senior citizens aged 70 and above",
+        "No cap on family size or age"
+      ],
+      "official_domains": [
+        "pmjay.gov.in",
+        "beneficiary.nha.gov.in",
+        "nha.gov.in"
+      ],
+      "official_url": "https://beneficiary.nha.gov.in",
+      "playbook": null,
+      "source": "National Health Authority (nha.gov.in); Lok Sabha reply, 24 July 2026"
     }
   ]
 }

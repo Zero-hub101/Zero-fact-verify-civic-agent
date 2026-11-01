@@ -125,6 +125,11 @@ class ForensicsRequest(BaseModel):
     audit_id: str
 
 
+class SpeakRequest(BaseModel):
+    text: str
+    lang: str = "en"
+
+
 class RunRequest(BaseModel):
     audit_id: str
     playbook_id: Optional[str] = None
@@ -226,6 +231,15 @@ async def ingest(text: str = Form(""), url: str = Form(""), transcript: str = Fo
         finally:
             tmp.unlink(missing_ok=True)
     return _ingest(text, url, transcript, prof, stored, reply_language)
+
+
+@app.post("/api/voice", dependencies=auth)
+def voice(req: SpeakRequest):
+    """Spoken verdict, made on demand when the citizen presses Listen."""
+    out = pipeline.speak(req.text, req.lang)
+    if out.get("error"):
+        raise HTTPException(503, out["error"])
+    return out
 
 
 @app.post("/api/audit/forensics", dependencies=auth)

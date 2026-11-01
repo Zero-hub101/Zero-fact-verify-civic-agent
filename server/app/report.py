@@ -34,7 +34,8 @@ def build(audit: dict, task: Optional[dict], receipt: Optional[dict]) -> str:
     if s:
         lines += [f"- Scheme: **{s['name']}** ({s['source']})",
                   f"- Official benefit: Rs {s['benefit_amount']:,} {s['benefit_period']}; application fee Rs {s['application_fee']}",
-                  f"- Income limit: Rs {s['income_limit']:,}; deadline {s['deadline']}",
+                  f"- Income limit: {'Rs ' + format(s['income_limit'], ',') if s.get('income_limit') else 'none'}; "
+                  f"deadline {s.get('deadline') or 'none (ongoing scheme)'}",
                   f"- Official domains: {', '.join(s['official_domains'])}", ""]
     else:
         lines += ["No matching scheme in the trusted registry.", ""]

@@ -25,6 +25,22 @@ def _is_private(host: str) -> bool:
     return False
 
 
+def _friendly_fetch_error(e: Exception, host: str) -> str:
+    msg = str(e).lower()
+    if isinstance(e, socket.gaierror) or "getaddrinfo" in msg or "name or service not known" in msg \
+            or "nodename nor servname" in msg or "no address associated" in msg:
+        return (f"The link's website ({host}) does not exist. Fake sites often disappear quickly; "
+                "do not trust links you cannot verify.")
+    if "timed out" in msg or "timeout" in msg:
+        return f"The link ({host}) did not respond, so its content could not be checked."
+    code = getattr(e, "code", None)
+    if code:
+        return f"The link ({host}) returned an error (HTTP {code}), so its content could not be checked."
+    if "certificate" in msg or "ssl" in msg:
+        return f"The link ({host}) has an invalid security certificate, a common sign of an unsafe site."
+    return f"The link ({host}) could not be opened, so its content could not be checked."
+
+
 def fetch_url_text(url: str, allow_local: bool = True, max_bytes: int = 1_000_000) -> dict:
     """Download a page and return its title and visible text. Never raises; errors are reported."""
     if not config.ALLOW_URL_FETCH:
@@ -39,7 +55,8 @@ def fetch_url_text(url: str, allow_local: bool = True, max_bytes: int = 1_000_00
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read(max_bytes).decode(resp.headers.get_content_charset() or "utf-8", errors="ignore")
     except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": f"Could not fetch URL: {e.__class__.__name__}: {e}"}
+        log.info("URL fetch failed for %s: %r", parsed.hostname, e)
+        return {"ok": False, "error": _friendly_fetch_error(e, parsed.hostname), "unreachable": True}
     title = re.search(r"<title[^>]*>(.*?)</title>", raw, re.IGNORECASE | re.DOTALL)
     meta_desc = re.findall(r'<meta[^>]+(?:name|property)=["\'](?:description|og:description|og:title)["\'][^>]+content=["\']([^"\']+)',
                            raw, re.IGNORECASE)

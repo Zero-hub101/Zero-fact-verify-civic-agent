@@ -100,7 +100,7 @@ export default function Auditor({ onOpen }) {
           {registry.map((s) => (
             <div key={s.id} className="reg">
               <b>{s.name}</b> <span className="muted small">{s.source}</span>
-              <div className="small">Rs {s.benefit_amount.toLocaleString("en-IN")} {s.benefit_period} · fee {s.application_fee ? `Rs ${s.application_fee}` : "free"} · income ≤ Rs {s.income_limit.toLocaleString("en-IN")} · deadline {s.deadline}</div>
+              <div className="small">Rs {s.benefit_amount.toLocaleString("en-IN")} {s.benefit_period} · fee {s.application_fee ? `Rs ${s.application_fee}` : "free"}{s.income_limit != null && ` · income ≤ Rs ${s.income_limit.toLocaleString("en-IN")}`}{s.deadline && ` · deadline ${s.deadline}`}</div>
             </div>
           ))}
         </div>

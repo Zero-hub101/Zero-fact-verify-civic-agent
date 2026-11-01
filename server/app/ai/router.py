@@ -4,7 +4,7 @@
     AI_TRANSLATION=sarvam,gemini                        language communication (claims in, replies out)
     AI_SPEECH=sarvam,groq,elevenlabs,whisper,gemini     audio in videos -> text
     AI_VOICE=sarvam,elevenlabs                          verdict read aloud in the user's language
-    AI_OCR=ocrspace,tesseract                           text printed in images
+    AI_OCR=ocrspace,tesseract,gemini                    text printed in images
     AI_IMAGE_AI=localdetector,sightengine               AI-generated image detection (free local model first)
     AI_VISION=openai,gemini                             what an image shows and claims
     AI_REVIEW=mistral,cohere,ollama,claude,openai       independent second opinion (free options first)
@@ -46,7 +46,7 @@ ROLES = {
     "translation": ("AI_TRANSLATION", "sarvam,gemini,groq", "Language communication"),
     "speech": ("AI_SPEECH", "sarvam,groq,elevenlabs,whisper,gemini", "Speech to text"),
     "voice": ("AI_VOICE", "sarvam,elevenlabs", "Spoken reply (text to speech)"),
-    "ocr": ("AI_OCR", "ocrspace,tesseract", "Text in images"),
+    "ocr": ("AI_OCR", "ocrspace,tesseract,gemini", "Text in images"),
     "image_ai": ("AI_IMAGE_AI", "localdetector,sightengine", "AI-generated image & deepfake detection"),
     "vision": ("AI_VISION", "openai,gemini", "Image understanding"),
     "review": ("AI_REVIEW", "mistral,cohere,ollama,groq,claude,openai", "Independent second opinion"),

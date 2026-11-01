@@ -180,3 +180,39 @@ def test_spoken_summary_handles_every_verdict():
     from app import pipeline
     for v in ("authentic", "unverified", "likely_fraudulent", "off_topic", "something_new"):
         assert pipeline._spoken_summary(v, 0.5, None, None, False)
+
+
+def test_ai_cache_round_trip(tmp_path, monkeypatch):
+    from app.ai import cache
+    monkeypatch.setattr(cache, "DIR", tmp_path)
+    k = cache.key("x", {"a": 1})
+    assert cache.get("t", k) is None
+    cache.put("t", k, {"v": 2})
+    assert cache.get("t", k) == {"v": 2}
+    cache.put_bytes("b", k, b"abc", "wav")
+    assert cache.get_bytes("b", k) == (b"abc", "wav")
+    monkeypatch.setenv("AI_CACHE_HOURS", "0")
+    assert cache.get("t", k) is None
+
+
+def test_real_schemes_and_kyc_amount():
+    from app.forensics import text
+    scam = text.analyze_claim("URGENT: PM Kisan installment pending! Pay Rs 99 KYC fee to UPI pmkisan.help@okaxis or lose Rs 6000. Share OTP.")
+    assert scam["matched_scheme"]["id"] == "sch_pm_kisan" and scam["score"] < 0.3
+    assert any("Rs 99" in c["detail"] for c in scam["contradictions"])
+    ok = text.analyze_claim("PM-KISAN gives farmer families Rs 6,000 per year in three installments of Rs 2,000. Register free at pmkisan.gov.in.")
+    assert ok["matched_scheme"]["id"] == "sch_pm_kisan" and not ok["contradictions"] and ok["score"] > 0.75
+    assert text.extract_amounts("Rs 5 lakhs cover")[0]["value"] == 500000
+
+
+def test_lookalike_government_links():
+    from app.forensics import text, sources
+    for host in ("scholarship-gov-in.help", "pmkisan.gov.in.net", "pmkisan-help.in"):
+        assert text.domain_trust(host)["trust"] == "lookalike", host
+    for host in ("pmkisan.gov.in", "scholarships.gov.in", "www.google.com"):
+        assert text.domain_trust(host)["trust"] != "lookalike", host
+    r = text.analyze_claim("Apply for Post Matric Scholarship here", "http://scholarship-gov-in.help/apply")
+    assert r["score"] < 0.3 and any(f["id"] == "lookalike_domain" for f in r["scam_flags"])
+    import socket
+    msg = sources._friendly_fetch_error(socket.gaierror(11001, "getaddrinfo failed"), "x.help")
+    assert "does not exist" in msg and "getaddrinfo" not in msg

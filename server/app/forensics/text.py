@@ -40,7 +40,7 @@ def tokens(text: str) -> set[str]:
 
 # ---------------- fact extraction ----------------
 _AMOUNT_RE = re.compile(
-    r"(?:(?:rs\.?|₹|inr)\s*([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore|k)?)|(?:([\d,]+(?:\.\d+)?)\s*(lakh|lac|crore)?\s*(?:rupees|rs\b|inr))",
+    r"(?:(?:rs\.?|₹|inr)\s*([\d,]+(?:\.\d+)?)\s*(lakhs?|lacs?|crores?|k(?![a-z]))?)|(?:([\d,]+(?:\.\d+)?)\s*(lakhs?|lacs?|crores?)?\s*(?:rupees|rs\b|inr))",
     re.IGNORECASE)
 _FEE_WORDS = r"fee|charge|pay|deposit|transfer|send|processing|registration|शुल्क|फीस|पंजीकरण|भुगतान|கட்டணம்|రుసుము|ಶುಲ್ಕ|ഫീസ്"
 _FEE_CONTEXT = re.compile(_FEE_WORDS, re.IGNORECASE)
@@ -51,7 +51,7 @@ _FREE_RE = re.compile(r"\b(free of cost|no (application )?fee|free to apply|appl
 
 def _to_number(num: str, unit: Optional[str]) -> float:
     value = float(num.replace(",", ""))
-    unit = (unit or "").lower()
+    unit = (unit or "").lower().rstrip("s")
     if unit in ("lakh", "lac"):
         value *= 100_000
     elif unit == "crore":
@@ -113,7 +113,25 @@ def domain_trust(url: str) -> dict:
         return {"host": host, "trust": "official", "score": 1.0}
     if host in td["low_trust_hosts"]:
         return {"host": host, "trust": "low", "score": 0.1}
+    if _imitates_official(host):
+        return {"host": host, "trust": "lookalike", "score": 0.0}
     return {"host": host, "trust": "unknown", "score": 0.5}
+
+
+_GOVISH = re.compile(r"(?:^|[.\-])(?:gov|govt|nic|sarkari)(?:[.\-]|in\b|$)|gov-?in|nic-?in|india-?gov", re.IGNORECASE)
+
+
+def _imitates_official(host: str) -> bool:
+    """A non-official host that dresses up as a government address (scholarship-gov-in.help, pmkisan-gov.in.net)."""
+    if _GOVISH.search(host):
+        return True
+    for s in registry():
+        for d in s.get("official_domains", []):
+            label = d.split(".")[0]
+            if len(label) >= 5 and label not in ("localhost",) and label in host and host != d \
+                    and not host.endswith("." + d):
+                return True
+    return False
 
 
 # ---------------- registry matching ----------------
@@ -143,7 +161,8 @@ def check_facts(text: str, scheme: dict) -> tuple[list[dict], list[dict]]:
 
     benefits = [a for a in amounts if a["kind"] == "benefit"]
     if benefits:
-        if any(_close(a["value"], scheme["benefit_amount"]) for a in benefits):
+        valid = [scheme["benefit_amount"], *scheme.get("benefit_alt_amounts", [])]
+        if any(_close(a["value"], v) for a in benefits for v in valid):
             confirmations.append({"field": "benefit_amount", "detail":
                                   f"Benefit amount matches the registry (Rs {scheme['benefit_amount']:,} {scheme['benefit_period']})."})
         else:
@@ -159,13 +178,15 @@ def check_facts(text: str, scheme: dict) -> tuple[list[dict], list[dict]]:
         confirmations.append({"field": "application_fee", "detail": "Claim correctly says the application is free."})
 
     incomes = [a for a in amounts if a["kind"] == "income_limit"]
-    for a in incomes:
+    for a in incomes if scheme.get("income_limit") else []:
         if _close(a["value"], scheme["income_limit"]):
             confirmations.append({"field": "income_limit", "detail": f"Income limit matches (Rs {scheme['income_limit']:,})."})
         else:
             contradictions.append({"field": "income_limit", "severity": "medium", "detail":
                                    f"Claim states an income limit of {a['text']}; the registry lists Rs {scheme['income_limit']:,}."})
 
+    if not scheme.get("deadline"):
+        return confirmations, contradictions
     deadline = datetime.strptime(scheme["deadline"], "%Y-%m-%d").date()
     dates = extract_dates(text)
     if dates:
@@ -195,6 +216,10 @@ def analyze_claim(text: str, source_url: Optional[str] = None) -> dict:
     confirmations, contradictions = check_facts(text, scheme) if scheme else ([], [])
     scam_hits = detect_scam_patterns(text)
     sources = [domain_trust(u) for u in ([source_url] if source_url else []) + extract_urls(text)]
+    for src in sources:
+        if src["trust"] == "lookalike":
+            scam_hits.append({"id": "lookalike_domain", "label": "Link imitates a government website address",
+                              "weight": 0.45, "evidence": src["host"]})
 
     score = 0.5
     if scheme:

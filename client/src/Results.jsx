@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { api } from "./api.js";
 
 const SPEECH_LANG = { en: "en-IN", hi: "hi-IN", ta: "ta-IN", te: "te-IN", kn: "kn-IN", ml: "ml-IN", bn: "bn-IN",
   mr: "mr-IN", gu: "gu-IN", pa: "pa-IN", or: "or-IN", ur: "ur-IN" };
 
-// Spoken reply: the voice service's audio when there is one, otherwise the browser's own voice.
+// Spoken reply. The voice service makes the audio only when Listen is pressed (so the verdict is not kept
+// waiting); if there is no service or it fails, the browser's own voice reads the text instead.
 function VoiceReply({ voice }) {
-  const [speaking, setSpeaking] = useState(false);
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [url, setUrl] = useState(voice.url);
+  const [state, setState] = useState("idle");          // idle | loading | speaking | error
   const [voices, setVoices] = useState(() => (canSpeak ? window.speechSynthesis.getVoices() : []));
   useEffect(() => {
     if (!canSpeak) return undefined;
@@ -17,31 +20,48 @@ function VoiceReply({ voice }) {
   }, [canSpeak]);
   const tag = SPEECH_LANG[voice.lang] || voice.lang;
   const match = voices.find((v) => v.lang === tag) || voices.find((v) => v.lang.toLowerCase().startsWith(voice.lang));
-  if (voice.url) {
+
+  if (url) {
     return (
       <div className="voice">
-        <span>🔊 Listen ({voice.lang_name})</span>
-        <audio controls src={voice.url} preload="none" />
+        <span>🔊 {voice.lang_name}</span>
+        <audio controls autoPlay src={url} preload="none" />
       </div>
     );
   }
-  if (!canSpeak || !voice.text || !match) return null;   // no voice for this language on this device
-  const toggle = () => {
+  const browserSpeak = () => {
     const synth = window.speechSynthesis;
-    if (speaking) { synth.cancel(); setSpeaking(false); return; }
+    if (state === "speaking") { synth.cancel(); setState("idle"); return; }
     const u = new SpeechSynthesisUtterance(voice.text);
     u.lang = tag;
     u.voice = match;
-    u.onend = u.onerror = () => setSpeaking(false);
+    u.onend = u.onerror = () => setState("idle");
     synth.cancel();
     synth.speak(u);
-    setSpeaking(true);
+    setState("speaking");
   };
+  const listen = async () => {
+    if (state === "speaking") return browserSpeak();
+    if (voice.service) {
+      setState("loading");
+      try {
+        const out = await api.speak(voice.text, voice.lang);
+        setUrl(out.url);
+        setState("idle");
+        return;
+      } catch {
+        if (!(canSpeak && match)) { setState("error"); return; }
+      }
+    }
+    browserSpeak();
+  };
+  if (!voice.text || (!voice.service && !(canSpeak && match))) return null;
   return (
     <div className="voice">
-      <button type="button" className="btn ghost" onClick={toggle}>
-        {speaking ? "⏹ Stop" : `🔊 Listen (${voice.lang_name})`}
+      <button type="button" className="btn ghost" onClick={listen} disabled={state === "loading"}>
+        {state === "loading" ? "Preparing audio…" : state === "speaking" ? "⏹ Stop" : `🔊 Listen (${voice.lang_name})`}
       </button>
+      {state === "error" && <span className="small muted">Audio is not available right now.</span>}
     </div>
   );
 }
@@ -320,8 +340,8 @@ function ClaimMatch({ r }) {
               <dt>Scheme</dt><dd>{s.name}</dd>
               <dt>Benefit</dt><dd>Rs {s.benefit_amount.toLocaleString("en-IN")} {s.benefit_period}</dd>
               <dt>Application fee</dt><dd>{s.application_fee ? `Rs ${s.application_fee}` : "Free"}</dd>
-              <dt>Income limit</dt><dd>Rs {s.income_limit.toLocaleString("en-IN")}</dd>
-              <dt>Deadline</dt><dd>{new Date(s.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</dd>
+              {s.income_limit != null && <><dt>Income limit</dt><dd>Rs {s.income_limit.toLocaleString("en-IN")}</dd></>}
+              {s.deadline && <><dt>Deadline</dt><dd>{new Date(s.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</dd></>}
               <dt>Official sites</dt><dd>{s.official_domains.filter((d) => !/localhost|127\./.test(d)).join(", ")}</dd>
             </dl>
           ) : <p className="muted">No matching scheme in the registry.</p>}
@@ -363,6 +383,10 @@ export default function Results({ data, onLaunch, launching }) {
           <div className="launch">
             {r.verdict === "off_topic" ? (
               <p className="muted small">Paste a message, link, image or video about a government scheme, benefit or notice.</p>
+            ) : r.verdict === "authentic" && r.matched_scheme && !r.matched_scheme.playbook ? (
+              <p className="small">✅ Looks genuine. Apply only on the official site:{" "}
+                <a href={r.matched_scheme.official_url || `https://${r.matched_scheme.official_domains[0]}`} target="_blank" rel="noreferrer">
+                  {(r.matched_scheme.official_url || r.matched_scheme.official_domains[0]).replace(/^https?:\/\//, "")}</a></p>
             ) : r.agentAllowed ? (
               <button className="primary big" disabled={launching || !r.has_profile} onClick={onLaunch}>
                 {launching ? "Starting agent…" : "2 · Apply on the official portal with the agent"}
