@@ -223,3 +223,4 @@ code.q { background: #eef0f5; padding: 1px 6px; border-radius: 5px; margin: 0 4p
 .ocr summary { cursor: pointer; color: var(--ink-2); font-size: 13.5px; } .ocr p { white-space: pre-wrap; margin: 4px 0; font-size: 14px; }
 .voice { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; font-weight: 600; }
 .voice audio { height: 34px; }
+.gauge-off { font: 700 72px var(--serif); color: var(--warn); text-align: center; }

@@ -167,3 +167,10 @@ def test_low_resolution_warning(server, demo_media, tmp_path):
     ing = ingest(server, GENUINE, small)
     res = verify(server, ing["audit_id"])
     assert res["low_resolution_confidence_degraded"] is True
+
+
+def test_off_topic_guardrail(server):
+    ing = ingest(server, "How are you today? Tell me a joke about cats.")
+    res = verify(server, ing["audit_id"])
+    assert res["verdict"] == "off_topic" and res["agentAllowed"] is False
+    assert "public-service claim" in res["warnings"][0]

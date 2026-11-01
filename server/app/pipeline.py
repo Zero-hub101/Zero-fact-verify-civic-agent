@@ -1,5 +1,6 @@
 """Verification pipeline: runs text, URL and media analysis in parallel and combines them into one score."""
 import logging
+import re
 import shutil
 import subprocess
 import tempfile
@@ -79,6 +80,24 @@ def _spoken_summary(verdict: str, authenticity: float, found: Optional[dict], sc
     if verdict != "authentic":
         parts.append("Do not pay any fee or share your OTP.")
     return " ".join(parts)
+
+
+CIVIC_WORDS = re.compile(
+    r"scheme|scholarship|yojana|pension|subsid|government|govt|ministry|department|benefit|grant|ration|aadhaar|"
+    r"pan card|loan|portal|apply|application|registration|eligib|deadline|last date|fee|otp|upui?|refund|"
+    r"certificate|welfare|stipend|allowance|official|notice|announcement|sarkari|"
+    r"सरकार|योजना|छात्रवृत्ति|पेंशन|शुल्क|आवेदन|அரசு|திட்டம்|உதவித்தொகை|ప్రభుత్వ|పథకం|ಸರ್ಕಾರ|ಯೋಜನೆ",
+    re.IGNORECASE)
+
+
+def _off_topic(claim: str, scheme: Optional[dict], text_result: dict, media_tamper, found: Optional[dict]) -> bool:
+    if scheme or text_result.get("scam_flags") or text_result.get("contradictions"):
+        return False
+    if media_tamper is not None and media_tamper >= 0.6:
+        return False                                   # manipulated media is always worth reporting
+    if found and found.get("grounded") and found.get("verdict") in ("fraudulent", "misleading"):
+        return False
+    return not CIVIC_WORDS.search(claim or "")
 
 
 def run(inputs: dict) -> dict:
@@ -258,6 +277,12 @@ def run(inputs: dict) -> dict:
         verdict = "unverified"
     else:
         verdict = "likely_fraudulent"
+
+    # Guardrail: off-topic input (a selfie, a random question) gets no trust verdict at all.
+    if _off_topic(claim, scheme, text_result, media_tamper, found):
+        verdict = "off_topic"
+        warnings.insert(0, "This doesn't look like a public-service claim (scheme, benefit, fee, deadline or official "
+                           "notice). FactVerify only checks government-service claims.")
 
     agent_allowed = verdict == "authentic" and scheme is not None and not deepfake
     if verdict == "authentic" and scheme is None:

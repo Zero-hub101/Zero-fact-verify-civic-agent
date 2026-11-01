@@ -4,6 +4,7 @@ const VERDICT = {
   authentic: { label: "Verified authentic", cls: "ok" },
   unverified: { label: "Could not verify", cls: "warn" },
   likely_fraudulent: { label: "Likely fraudulent", cls: "bad" },
+  off_topic: { label: "Not a public-service claim", cls: "warn" },
 };
 
 export function TrustGauge({ value, threshold }) {
@@ -299,7 +300,9 @@ export default function Results({ data, onLaunch, launching }) {
   return (
     <div className="results">
       <div className="card summary">
-        <TrustGauge value={r.authenticity} threshold={r.threshold} />
+        {r.verdict === "off_topic"
+          ? <div className="gauge-off">?</div>
+          : <TrustGauge value={r.authenticity} threshold={r.threshold} />}
         <div className="summary-body">
           <span className={`verdict ${v.cls}`}>{v.label}</span>
           <div className="kv">
@@ -317,7 +320,9 @@ export default function Results({ data, onLaunch, launching }) {
           )}
           {r.warnings.map((w, i) => <p key={i} className="warn-text small">⚠ {w}</p>)}
           <div className="launch">
-            {r.agentAllowed ? (
+            {r.verdict === "off_topic" ? (
+              <p className="muted small">Paste a message, link, image or video about a government scheme, benefit or notice.</p>
+            ) : r.agentAllowed ? (
               <button className="primary big" disabled={launching || !r.has_profile} onClick={onLaunch}>
                 {launching ? "Starting agent…" : "2 · Apply on the official portal with the agent"}
               </button>

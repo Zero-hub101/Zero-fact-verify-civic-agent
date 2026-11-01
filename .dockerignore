@@ -1,0 +1,10 @@
+.git
+.env
+*.env
+!.env.example
+server/.venv
+server/runtime
+server/.pytest_cache
+**/__pycache__
+client/node_modules
+client/src

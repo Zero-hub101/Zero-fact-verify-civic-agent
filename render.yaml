@@ -1,0 +1,25 @@
+# Render Blueprint: New -> Blueprint -> pick this repository. Then paste your API keys when Render asks.
+services:
+  - type: web
+    name: factverify-civic-agent
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OCR_SPACE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-4-argon
+      - key: GEMINI_FAST_MODEL
+        value: gemini-3.8-flash

@@ -41,6 +41,18 @@ Other optional settings: Set `FACTVERIFY_ENCRYPTION_KEY` for a stable AES key; w
 
 Optional extras: **ffmpeg** (`winget install ffmpeg` / `brew install ffmpeg`) for video. `pip install pytesseract` plus the Tesseract program reads text from uploaded images. `pip install faster-whisper` transcribes video speech.
 
+## Deploy on Render (for the submission link)
+
+1. Go to https://render.com and sign in with GitHub.
+2. Click **New → Blueprint** and pick this repository. Render reads `render.yaml` and builds the `Dockerfile`; the first build takes about 10 minutes.
+3. When Render asks for the secret values, paste the API keys from your private settings file. Leave any you don't have empty.
+4. When the build is live, open `https://<your-app>.onrender.com/api/health`. It should show `"status": "healthy"`. Then submit `https://<your-app>.onrender.com`.
+
+Notes:
+- The free plan sleeps after inactivity. Open the link about a minute before judging so it wakes up.
+- Offline extras (Ollama, the local AI-image detector, offline Whisper) are switched off in the cloud; the cloud keys cover those jobs.
+- Anyone with the link can use your API credit, so set usage limits in each provider's dashboard.
+
 ## Test
 
 ```bash
