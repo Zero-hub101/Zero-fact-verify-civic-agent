@@ -24,6 +24,27 @@ Trust score = weighted mix of the rule engine (45%), AI research (40% with live 
 
 **Input rules:** messages over 4,000 characters, under 12 letters/digits, mostly symbols/emoji, or keyboard-mash/noise are rejected with a clear message before any AI call. Uploads: PNG/JPG/WEBP/MP4/MOV/WEBM up to 20 MB and 40 megapixels, content-checked. **Abuse limits:** 20 requests per minute and 60 per 10 minutes per visitor (HTTP 429 with `Retry-After`). Uploads are served with `nosniff` and a locked-down Content-Security-Policy. On the hosted server the example buttons are pre-run after every restart and the instance keeps itself awake, so examples answer in seconds. User text is HTML-escaped in reports and rendered as plain text in the UI.
 
+## Architecture (one page)
+
+```mermaid
+flowchart LR
+  U[Citizen: text / link / photo / video<br/>any Indian language] --> V[Input checks<br/>length, noise, rate limit]
+  V --> R[Rule engine<br/>real scheme registry + scam patterns]
+  V --> M[Media forensics<br/>JPEG ghost, copy-move, video frames]
+  V --> AI{AI router<br/>one job per model + fallbacks}
+  AI --> G[Gemini: research, reasoning, image reading<br/>universal backup]
+  AI --> S[Sarvam: Indian-language voice]
+  AI --> O[OCR.space: text in images]
+  AI --> SE[Sightengine: AI-made image check]
+  AI --> GQ[Groq: independent second opinion]
+  R & M & G & GQ --> SC[Weighted trust score<br/>+ plain-language answer]
+  SC -->|trust >= 0.75 and real scheme| AG[Browser agent<br/>max 10 steps, approved sites only]
+  AG --> H1[Human solves CAPTCHA] --> H2[Human approves submit] --> RC[Receipt + PDF<br/>hash-chained audit log]
+  SC -->|scam / unverified| X[Agent locked<br/>advice: do not pay, call 1930]
+```
+
+**The agent loop in 30 seconds:** the claim is checked by fixed rules (real scheme facts, scam patterns), media forensics and an AI team, each with one job and a backup. The results are combined into one trust score. Only if the score passes 0.75 *and* the claim matches a real scheme does the browser agent start: it runs a step-by-step playbook on approved sites only (at most 10 steps), masks personal data in logs, and **pauses** for anything a human must decide: CAPTCHA, final approval, missing data or a payment page. Every step is written to an append-only, hash-chained record, and the citizen gets the receipt and a downloadable report. Personal details are encrypted and deleted after 24 hours.
+
 ## What it does
 
 - **Plain answer first**: what it is, why, and what to do, translated into the citizen's language with a spoken reply. All scores and forensics are folded under "Technical details" for fact-checkers.
