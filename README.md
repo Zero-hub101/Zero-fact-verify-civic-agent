@@ -4,6 +4,8 @@
 
 **🔗 Live demo:** https://factverify-civic-agent.onrender.com (free server: the first visit after a quiet spell can take ~50 s to wake up) · **🎬 Demo video:** [MP4](docs/FactVerify_demo.mp4) · **📊 Deck:** [PDF](docs/FactVerify_Civic_Agent_Deck.pdf) · **Health check:** `/health` · **Verdicts:** [docs/VERDICTS.md](docs/VERDICTS.md)
 
+**USP:** not a chatbot. It verifies the claim, checks the media, and only then helps you apply safely. Answers point to official sources only: [scholarships.gov.in](https://scholarships.gov.in), [cybercrime.gov.in](https://cybercrime.gov.in) and the 1930 cyber-fraud helpline. **AI calls:** each service has a 90 s timeout, failures fall through to a backup model (Gemini is the universal backup), and visitor rate limits protect the API quotas.
+
 ## How to evaluate (2 minutes)
 
 1. Open the live demo and click **💬 Hindi WhatsApp scam**. In about 10 seconds you get "This looks like a scam", the reasons in plain words, what to do, and a spoken reply in Hindi (press **Listen**).
@@ -52,7 +54,7 @@ flowchart LR
 - **Real data only**: the scheme list holds real central schemes (Central Sector Scholarship, PM-KISAN, Ayushman Bharat PM-JAY) with their official sources; every claim is also researched live by Gemini. No mock datasets.
 - **Catches disguised scams**: fee requests, OTP/PIN requests (also written as "0TP", "o.t.p", "6 digit code"), personal UPI IDs, WhatsApp-only applications, look-alike "gov-in" links, edited photos and videos, in English, Hindi, Tamil, Telugu, Kannada and Hinglish.
 - **Safe agent**: only runs when a claim passes; at most 10 steps on approved sites; a human solves CAPTCHAs and approves the final submit; personal details are encrypted and deleted after 24 hours; every step is written to a tamper-proof (hash-chained) record with a downloadable report.
-- **Tested hard**: 62 automated tests, plus stress runs of 16,000+ generated inputs (broken links, huge or corrupt files, junk AI answers, disguised scams) with no crashes.
+- **Tested hard**: 67 automated tests, plus stress runs of 16,000+ generated inputs (broken links, huge or corrupt files, junk AI answers, disguised scams) with no crashes.
 
 Stack: React dashboard (prebuilt in `client/dist`) · FastAPI · Playwright · SQLite · AES-256-GCM.
 
