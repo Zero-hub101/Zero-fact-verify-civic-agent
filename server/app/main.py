@@ -53,7 +53,7 @@ async def lifespan(_app):
 
 def _warm_and_keep_awake(base: str) -> None:
     """On the hosted server: pre-run the example buttons once after each start (results are remembered, so judges get
-    them in seconds), then ping /health every 10 minutes so the free instance does not fall asleep."""
+    them in seconds; the warm-up runs are then removed from the audit log), then ping /health every 10 minutes so the free instance does not fall asleep."""
     import requests
     time.sleep(20)
     for sc, media in (("fraud_hindi", "image"), ("genuine", "video"), ("genuine", "image"), ("fraud", "video"),
@@ -64,6 +64,7 @@ def _warm_and_keep_awake(base: str) -> None:
             db.set_audit_result(a["audit_id"], {**pipeline_result, "audit_id": a["audit_id"], "has_profile": True},
                                 "verified" if pipeline_result["agentAllowed"] else "blocked")
             log.info("Demo warm-up %s/%s: %s", sc, media, pipeline_result["verdict"])
+            db.delete_audit(a["audit_id"])  # results stay cached; the console log starts clean for real visitors
         except Exception as e:  # noqa: BLE001 - warm-up is best effort
             log.warning("Demo warm-up %s/%s failed: %s", sc, media, e)
     while True:

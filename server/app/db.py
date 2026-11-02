@@ -133,6 +133,12 @@ def list_audits(limit: int = 50) -> list[dict]:
     return [_audit_row(r) for r in rows]
 
 
+def delete_audit(aid: str) -> None:
+    """Remove an internal warm-up audit so the public console only shows real visitors' checks."""
+    with connect() as c:
+        c.execute("DELETE FROM audits WHERE id=?", (aid,))
+
+
 def _audit_row(row: sqlite3.Row) -> dict:
     return {
         "id": row["id"], "created_at": row["created_at"], "profile_id": row["profile_id"],
